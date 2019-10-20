@@ -34,9 +34,13 @@
 #define MPU6050_H_
 
 #include "RPi_i2c.h"
+#include <stdint.h>
 #include <string>
+#include <vector>
 
 namespace MPU6050 {
+
+constexpr uint8_t GY_521_address = 0x68;
 
 struct Gyro_accel_data {
 	short int X;
@@ -46,7 +50,7 @@ struct Gyro_accel_data {
 
 class Device : private I2C_driver{
 public:
-	enum Dlpf : uint8_t {
+	enum class Dlpf : uint8_t {
 		bw_256hz,
 		bw_188hz,
 		bw_98hz,
@@ -56,14 +60,14 @@ public:
 		bw_5hz
 	};
 
-	enum Guro_fsr : uint8_t {
+	enum class Guro_fsr : uint8_t {
 		gfs_250dps,
 		gfs_500dps,
 		gfs_1000dps,
 		gfs_2000dps
 	};
 
-	enum Accel_fsr : uint8_t {
+	enum class Accel_fsr : uint8_t {
 		afs_2g,
 		afs_4g,
 		afs_8g,
@@ -71,7 +75,7 @@ public:
 	};
 
 	// This class must be created once. So we use singletone pattern.
-	static Device& Init(const int i2cbus, const uint8_t address){
+	static Device& Init(const int i2cbus, const uint8_t address = GY_521_address){
 		static Device instance{ i2cbus, address };
 	    return instance;
 	}
@@ -113,7 +117,7 @@ public:
 
 private:
 	// The following enum declares all MPU6050 internal registers.
-	enum Register : uint8_t {
+	enum class Register : uint8_t {
 		xg_offs_tc			= 0x00, // [7] PWR_MODE, [6:1] XG_OFFS_TC, [0] OTP_BNK_VLD
 		yg_offs_tc      	= 0x01, // [7] PWR_MODE, [6:1] YG_OFFS_TC, [0] OTP_BNK_VLD
 		zg_offs_tc      	= 0x02, // [7] PWR_MODE, [6:1] ZG_OFFS_TC, [0] OTP_BNK_VLD
@@ -238,7 +242,11 @@ private:
 	 *"MPU-6000 and MPU-6050 Register Map and Descriptions Revision 4.2"
 	 */
 
-	enum Pwr_mgmt_1 : uint8_t { 	// Register 107 – Power Management 1.
+	enum class bit_number : uint8_t {
+		bit0, bit1,	bit2, bit3, bit4, bit5, bit6, bit7, bit8
+	};
+
+	enum class Pwr_mgmt_1 : uint8_t { 	// Register 107 – Power Management 1.
 		clk_select_bit	= 0, // Always use PLL with X axis gyroscope reference.
 		temp_dis_bit	= 3,
 		cycle_bit		= 5,
@@ -246,7 +254,7 @@ private:
 		reset_bit
 	};
 
-	enum fifo_enable {
+	enum class fifo_enable : uint8_t {
 		accel_reg_bit	= 3,
 		gz_reg_bit,
 		gy_reg_bit,
@@ -254,18 +262,18 @@ private:
 		temp_reg_bit
 	};
 
-	enum User_control {
+	enum class User_control : uint8_t {
 		reset_sig_paths	= 0,
 		fifo_reset 		= 2,
-		fifo_enable		= 6
+		fifo_enable		= 6,
 	};
 
 	Device( const int i2cbus, const uint8_t address );
 
 	bool Mpu_pwr_on();
 
-	bool Read_bit( Register reg , uint8_t bit_number);
-	void Write_bit( Register reg, uint8_t bit_number, bool state);
+	template <class T> bool Read_bit( Register reg, T bit_number);
+	template <class T> void Write_bit( Register reg, T bit_number, bool state);
 
 	// Function related to Invensense Motion Driver.
 	void 		Write_mem(uint16_t mem_address, uint16_t length, std::vector<uint8_t> data);

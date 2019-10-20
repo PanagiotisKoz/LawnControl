@@ -20,13 +20,9 @@
  */
 
 #include "MPU6050.h"
-#include <stdexcept>
-#include <unistd.h>
 #include <chrono>
 #include <thread>
 #include <fstream>
-#include <iterator>
-#include <vector>
 #include <iostream>
 
 constexpr uint16_t Dev_mem_size = 3*1024; // Maximum device memory size 3 KB.
@@ -60,7 +56,7 @@ bool Device::Mpu_pwr_on()
 
 uint8_t Device::Device_id()
 {
-	return Read( Register::who_am_i, 1).at(0) ;
+	return Read( static_cast<uint8_t>( Register::who_am_i ), 1).at(0) ;
 }
 
 
@@ -80,8 +76,8 @@ float Device::Ambient_temp()
 	if ( Read_bit( Register::pwr_mgmt_1, Pwr_mgmt_1::temp_dis_bit ) )
 		Disable_temp_sensor( false );
 
-	short int raw = ( Read( Register::temp_out_h, 1 ).at(0) << 8) |
-			Read( Register::temp_out_l, 1 ).at(0);
+	short int raw = ( Read( static_cast<uint8_t>( Register::temp_out_h ), 1 ).at(0) << 8) |
+			Read( static_cast<uint8_t>( Register::temp_out_l ), 1 ).at(0);
 
 
 	/*
@@ -166,7 +162,7 @@ void MPU6050::Device::Load_firmware(const std::string file_path)
 		}
 
 		I2C_buffer buff;
-		buff.reg = Register::dmp_cfg_1;
+		buff.reg = static_cast<uint8_t>( Register::dmp_cfg_1 );
 		buff.data.push_back(Mem_start_address >> 8);
 		buff.data.push_back(Mem_start_address & 0xFF );
 
@@ -205,12 +201,12 @@ Gyro_accel_data Device::Get_gyro_raw_data()
 		Wake_up();
 
 	Gyro_accel_data recv_data;
-	recv_data.X = ( Read(Register::gyro_xout_h, 1).at(0) << 8 ) |
-					Read(Register::gyro_xout_l, 1).at(0);
-	recv_data.Y = ( Read(Register::gyro_yout_h, 1).at(0) << 8 ) |
-					Read(Register::gyro_yout_l, 1).at(0);
-	recv_data.Z = ( Read(Register::gyro_zout_h, 1).at(0) << 8 ) |
-					Read(Register::gyro_zout_l, 1).at(0);
+	recv_data.X = ( Read( static_cast<uint8_t>( Register::gyro_xout_h ), 1).at(0) << 8 ) |
+					Read( static_cast<uint8_t>( Register::gyro_xout_l ), 1).at(0);
+	recv_data.Y = ( Read( static_cast<uint8_t>( Register::gyro_yout_h ), 1).at(0) << 8 ) |
+					Read( static_cast<uint8_t>( Register::gyro_yout_l ), 1).at(0);
+	recv_data.Z = ( Read( static_cast<uint8_t>( Register::gyro_zout_h ), 1).at(0) << 8 ) |
+					Read( static_cast<uint8_t>( Register::gyro_zout_l ), 1).at(0);
 
 	return recv_data;
 }
@@ -220,12 +216,12 @@ Gyro_accel_data Device::Get_accel_raw_data()
 		Wake_up();
 
 	Gyro_accel_data recv_data;
-	recv_data.X = ( Read(Register::accel_xout_h, 1).at(0) << 8 ) |
-					Read(Register::accel_xout_l, 1).at(0);
-	recv_data.Y = ( Read(Register::accel_yout_h, 1).at(0) << 8 ) |
-					Read(Register::accel_yout_l, 1).at(0);
-	recv_data.Z = ( Read(Register::accel_zout_h, 1).at(0) << 8 ) |
-					Read(Register::accel_zout_l, 1).at(0);
+	recv_data.X = ( Read( static_cast<uint8_t>( Register::accel_xout_h ), 1).at(0) << 8 ) |
+					Read( static_cast<uint8_t>( Register::accel_xout_l ), 1).at(0);
+	recv_data.Y = ( Read( static_cast<uint8_t>( Register::accel_yout_h ), 1).at(0) << 8 ) |
+					Read( static_cast<uint8_t>( Register::accel_yout_l ), 1).at(0);
+	recv_data.Z = ( Read( static_cast<uint8_t>( Register::accel_zout_h ), 1).at(0) << 8 ) |
+					Read( static_cast<uint8_t>( Register::accel_zout_l ), 1).at(0);
 
 	return recv_data;
 }
@@ -237,8 +233,8 @@ void Device::Set_dlpf(Dlpf bw)
 
 	I2C_buffer buff;
 
-	buff.reg = Register::config;
-	buff.data.push_back( bw );
+	buff.reg = static_cast<uint8_t>( Register::config );
+	buff.data.push_back( static_cast<uint8_t>( bw ) );
 
 	Write( buff );
 }
@@ -279,7 +275,7 @@ void Device::Set_gyro_rate(uint16_t rate)
 
 	I2C_buffer buff;
 
-	buff.reg = Register::smplrt_div;
+	buff.reg = static_cast<uint8_t>( Register::smplrt_div );
 	buff.data.push_back( 1000 / rate - 1 );
 
 	Write( buff );
@@ -293,8 +289,8 @@ void Device::Set_gyro_fsr(Guro_fsr range)
 
 	I2C_buffer buff;
 
-	buff.reg = Register::gyro_config;
-	buff.data.push_back( range << 3 );
+	buff.reg = static_cast<uint8_t>( Register::gyro_config );
+	buff.data.push_back( static_cast<uint8_t>( range ) << 3 );
 
 	Write( buff );
 }
@@ -306,8 +302,8 @@ void Device::Set_accel_fsr(Accel_fsr range)
 
 	I2C_buffer buff;
 
-	buff.reg = Register::accel_config;
-	buff.data.push_back( range << 3 );
+	buff.reg = static_cast<uint8_t>( Register::accel_config );
+	buff.data.push_back( static_cast<uint8_t>( range ) << 3 );
 
 	Write( buff );
 }
@@ -328,21 +324,22 @@ void Device::Reset_fifo( )
 	Write_bit( Register::user_ctrl, User_control::fifo_reset, true );
 }
 
-bool Device::Read_bit(Register reg, uint8_t bit_number)
+template <class T> bool Device::Read_bit(Register reg, T bit_number)
 {
-	uint8_t recv_reg { Read( reg, 1 ).at(0) };
-	return ( recv_reg & ( 1 << bit_number ) );
+	uint8_t recv_reg { Read( static_cast<uint8_t>( reg ), 1 ).at(0) };
+	return ( recv_reg & ( 1 << static_cast<uint8_t>( bit_number ) ) );
 }
 
-void Device::Write_bit(Register reg, uint8_t bit_number,
+template <class T> void Device::Write_bit(Register reg, T bit_number,
 		bool state)
 {
-	uint8_t recv_reg { Read( reg, 1 ).at(0) };
-	state ? recv_reg |= ( 1 << bit_number ) : recv_reg &= ~( 1 << bit_number );
+	uint8_t recv_reg { Read( static_cast<uint8_t>( reg ), 1 ).at(0) };
+	state ? recv_reg |= ( 1 << static_cast<uint8_t>( bit_number ) )
+						: recv_reg &= ~( 1 << static_cast<uint8_t>( bit_number ) );
 
 	I2C_buffer buff;
 
-	buff.reg = reg;
+	buff.reg = static_cast<uint8_t>( reg );
 	buff.data.push_back( recv_reg );
 
 	Write( buff );
@@ -353,13 +350,13 @@ std::vector<uint8_t> MPU6050::Device::Read_mem(uint16_t mem_address, uint16_t le
 
 	I2C_buffer sel_bank;
 
-    sel_bank.reg = Register::bank_sel;
+    sel_bank.reg = static_cast<uint8_t>( Register::bank_sel );
     sel_bank.data.push_back( mem_address >> 8 );
     sel_bank.data.push_back( mem_address & 0xff );
 
     I2C_driver::Write(sel_bank);
 
-    return I2C_driver::Read( Register::mem_r_w, length);
+    return I2C_driver::Read( static_cast<uint8_t>( Register::mem_r_w ), length);
 }
 
 void MPU6050::Device::Write_mem(uint16_t mem_address, uint16_t length,
@@ -367,14 +364,14 @@ void MPU6050::Device::Write_mem(uint16_t mem_address, uint16_t length,
 {
 	I2C_buffer sel_bank;
 
-	sel_bank.reg = Register::bank_sel;
+	sel_bank.reg = static_cast<uint8_t>( Register::bank_sel );
 	sel_bank.data.push_back( mem_address >> 8 );
 	sel_bank.data.push_back( mem_address & 0xff );
 
 	I2C_driver::Write(sel_bank);
 
 	I2C_buffer buff;
-	buff.reg = Register::mem_r_w;
+	buff.reg = static_cast<uint8_t>( Register::mem_r_w );
 	buff.data = data;
 	I2C_driver::Write(buff);
 }

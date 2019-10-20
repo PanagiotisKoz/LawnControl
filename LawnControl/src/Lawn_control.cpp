@@ -20,14 +20,16 @@
  */
 
 #include "MPU6050.h"
-#include "RPi_i2c.h"
+#include "MCP4131.h"
 #include <iostream>
+#include <unistd.h>
+#include <linux/spi/spidev.h>
 
 using namespace std;
-constexpr uint8_t GY_521_address = 0x68;
+constexpr int I2C_bus = 1;
 
 int main() {
-	MPU6050::Device gy_521 = MPU6050::Device::Init( 1, GY_521_address );
+	MPU6050::Device gy_521 = MPU6050::Device::Init( I2C_bus );
 
 	try {
 		cout << "Device id is: 0x" << hex << +gy_521.Device_id() << endl;
@@ -35,15 +37,21 @@ int main() {
 		cout << "Ambient temperature is: " << fixed << gy_521.Ambient_temp() << "C" << endl;
 		gy_521.Disable_temp_sensor();
 		//gy_521.Load_firmware("/home/pi/projects/lawncontrol/debug/mpu6050_v6.1_firmware.bin");
-		while (true) {
-			MPU6050::Gyro_accel_data gdata = gy_521.Get_gyro_raw_data();
-			cout << "GX:" << gdata.X << " GY:" << gdata.Y << " GZ:" << gdata.Z << endl;
-		}
+		MPU6050::Gyro_accel_data gdata = gy_521.Get_gyro_raw_data();
+		cout << "GX:" << gdata.X << " GY:" << gdata.Y << " GZ:" << gdata.Z << endl;
+
+
+		MCP4131 dpot = MCP4131::Init( MCP4131::Channel::channel0, 1000000 );
+		dpot.Enable();
+		dpot.Set_pot_middle();
+		sleep(5);
+		dpot.Set_pot_max();
+		dpot.Disable();
+
+	return 0;
 	}
 	catch ( std::runtime_error &e ) {
 		cerr << e.what() << endl;
 		return -1;
 	}
-
-	return 0;
 }

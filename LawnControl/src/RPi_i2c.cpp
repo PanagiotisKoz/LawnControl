@@ -40,25 +40,23 @@ I2C_driver::I2C_driver( const int i2cbus, uint8_t addr )
 	i2cbuspath += std::to_string(i2cbus);
 
 	// Open device file
-	m_dev_fd = open( i2cbuspath.c_str(), O_RDWR );
-
-	if ( m_dev_fd < 0 ) {
+	if ( ( m_dev_fd = open( i2cbuspath.c_str(), O_RDWR ) ) < 0 ) {
 		std::string msg { strerror( errno ) };
-		msg.insert(0, "i2c: failed to read to the bus. Because:" );
+		msg.insert(0, "i2c: Failed to open i2c bus. Because: " );
 		throw std::runtime_error { msg };
 	}
 
 	// Select slave device
 	if ( ioctl( m_dev_fd, I2C_SLAVE, addr ) < 0 ) {
 		std::string msg { strerror( errno ) };
-		msg.insert(0, "i2c: failed to read to the bus. Because:" );
+		msg.insert(0, "i2c: Failed to select slave device. Because: " );
 		throw std::runtime_error { msg };
 	}
 
 	/* Get adapter functionality */
 	if (ioctl(m_dev_fd, I2C_FUNCS, &m_funcs) < 0) {
 		std::string msg { strerror( errno ) };
-		msg.insert(0, "i2c: failed to read to the bus. Because:" );
+		msg.insert(0, "i2c: Failed to get adapter functionality. Because: " );
 		throw std::runtime_error { msg };
 	}
 
@@ -66,8 +64,6 @@ I2C_driver::I2C_driver( const int i2cbus, uint8_t addr )
 
 I2C_driver::~I2C_driver()
 {
-	// Close the device file
-	close( m_dev_fd );
 }
 
 // Writes byte/s values of type i2c_byte_buffer to I2C bus.
@@ -125,7 +121,7 @@ void I2C_driver::Write( I2C_buffer buffer) const {
 
 	if ( ioctl_ret == -1 ) {
 		std::string msg { strerror( errno ) };
-		msg.insert(0, "i2c Write: failed to write to the bus. Because:" );
+		msg.insert(0, "i2c Write: failed to write to the bus. Because: " );
 		throw std::runtime_error { msg };
 	}
 }
@@ -179,7 +175,7 @@ std::vector<uint8_t> I2C_driver::Read( uint8_t i2c_register, const uint16_t leng
 
 	if ( ioctl_ret == -1 ) {
 		std::string msg { strerror( errno ) };
-		msg.insert(0, "i2c Write: failed to write to the bus. Because:" );
+		msg.insert(0, "i2c Read: failed to read to the bus. Because: " );
 		throw std::runtime_error { msg };
 	}
 
