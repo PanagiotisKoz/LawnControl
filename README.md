@@ -1,6 +1,5 @@
 # LawnControl
-
-## Copyright
+---
 > __Copyright (C) 2019 Panagiotis Charisopoulos.__
 
 > __This program is free software: you can redistribute it and/or modify
@@ -15,7 +14,7 @@ GNU General Public License for more details.__
 
 > __You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.__ 
-
+---
 ## Description
 This work, was done in the context of my undergraduate dissertation 
 "Remote control of electric mower". The brain of the lawnmower is a raspberry pi 3b, 
