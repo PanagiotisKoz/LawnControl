@@ -14,4 +14,11 @@
  * 	You should have received a copy of the GNU General Public License
  * 	along with this program.  If not, see <https://www.gnu.org/licenses/>.
  
-Soon, I will put usefull description about what this software is doing.
+ 	This work, was done in the context of my undergraduate dissertation 
+"Remote control of electric mower". The brain of the lawnmower is a raspberry pi 3b, 
+which receives commands via tcp / ip and translates them into commands on the power 
+board that drives the motors.
+
+ 	The electronic board was designed and manufactured by me. It has one mpu6050, 
+one mcp4131 digital potentiometer, two L6207N, two ina226 and one NLAS4684. Τhe exact 
+description and schematics I might upload as soon as the project is finished.
