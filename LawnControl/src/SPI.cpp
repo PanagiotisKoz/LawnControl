@@ -1,8 +1,6 @@
 /*
  * 	spi.cpp
  *
- *	<one line to give the program's name and a brief idea of what it does.>
- *
  *	Copytight (C) 21 Οκτ 2019 Panagiotis charisopoulos
  *
  *	This program is free software: you can redistribute it and/or modify
@@ -62,7 +60,6 @@ SPI::SPI( const Channel channel, const int speed, const Mode mode )
 
 SPI::~SPI()
 {
-	// TODO Auto-generated destructor stub
 }
 
 void SPI::Write(const uint8_t reg, uint8_t value)

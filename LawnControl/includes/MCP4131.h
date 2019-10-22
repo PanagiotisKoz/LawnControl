@@ -1,7 +1,10 @@
 /*
  * 	MCP4131.h
  *
- *	<one line to give the program's name and a brief idea of what it does.>
+ *	The MCP4131 device uses an SPI interface. This device support 7-bit
+ *	resistor network, and Potentiometer and Rheostat pinouts.
+ *
+ *	This code offer interface to manipulate this chip.
  *
  *	Copytight (C) 17 Οκτ 2019 Panagiotis charisopoulos
  *
@@ -30,7 +33,7 @@
 #include <unistd.h>
 #include "SPI.h"
 
-class MCP4131 : private SPI{
+class MCP4131 {
 public:
 
 	enum Pot_fixed_values : uint8_t {
@@ -43,15 +46,14 @@ public:
 	MCP4131( const MCP4131& ) = delete; // non construction-copyable
 	MCP4131& operator=( const MCP4131& ) = delete; // non copyable
 
-	void Set_pot( uint8_t value ) { Write( static_cast<uint8_t>( Reg::wiper ), value ); }
-	void Set_pot_min( ) { Write( static_cast<uint8_t>( Reg::wiper ), Pot_fixed_values::pot_min ); }
-	void Set_pot_max( ) { Write( static_cast<uint8_t>( Reg::wiper ), Pot_fixed_values::pot_max ); }
-	void Set_pot_middle( ) { Write( static_cast<uint8_t>( Reg::wiper ), Pot_fixed_values::pot_mid ); }
+	void Set_pot( uint8_t value ) { m_SPI.Write( static_cast<uint8_t>( Reg::wiper ), value ); }
+	void Set_pot_min( ) { m_SPI.Write( static_cast<uint8_t>( Reg::wiper ), Pot_fixed_values::pot_min ); }
+	void Set_pot_max( ) { m_SPI.Write( static_cast<uint8_t>( Reg::wiper ), Pot_fixed_values::pot_max ); }
+	void Set_pot_middle( ) { m_SPI.Write( static_cast<uint8_t>( Reg::wiper ), Pot_fixed_values::pot_mid ); }
 
 
-	void Enable() { Write( static_cast<uint8_t>( Reg::tcon ), static_cast<uint8_t>( Pot::enable ) ); }
-	void Disable() { Write( static_cast<uint8_t>( Reg::tcon ), static_cast<uint8_t>( Pot::disable ) );
-						usleep(50000); }
+	void Enable() { m_SPI.Write( static_cast<uint8_t>( Reg::tcon ), static_cast<uint8_t>( Pot::enable ) ); }
+	void Disable() { sleep(1); m_SPI.Write( static_cast<uint8_t>( Reg::tcon ), static_cast<uint8_t>( Pot::disable ) ); }
 
 	virtual ~MCP4131();
 
@@ -66,6 +68,8 @@ private:
 		disable = 0x08,
 		enable  = 0x0f
 	};
+
+	SPI m_SPI;
 };
 
 #endif /* MCP4131_H_ */

@@ -1,7 +1,15 @@
 /*
  * 	INA226.h
  *
- *	<one line to give the program's name and a brief idea of what it does.>
+ *	The INA226 is a digital current sense amplifier with an I2C- and
+ *	SMBus-compatible interface. It provides digital current, voltage
+ *	and power readings necessary for accurate decision-making in
+ *	precisely-controlled systems.
+ *	Programmable registers allow flexible configuration for measurement
+ *	resolution as well as continuous-versus-triggered operation. Detailed
+ *	register information appears at http://www.ti.com/lit/ds/symlink/ina226.pdf.
+ *
+ *	This code offer interface to manipulate this chip.
  *
  *	Copytight (C) 21 Οκτ 2019 Panagiotis charisopoulos
  *
@@ -28,7 +36,7 @@
 
 #include <RPi_i2c.h>
 
-class INA226: private I2C_driver {
+class INA226 {
 public:
 
 	enum class Avg_samples : uint8_t {
@@ -55,7 +63,7 @@ public:
 		as_is
 	};
 
-	enum class Mode : uint8_t{
+	enum class Mode : uint8_t {
 		pwr_down,
 		shunt_volt_trig,
 		bus_volt_trig,
@@ -65,6 +73,15 @@ public:
 		bus_volt_cont,
 		shunt_bus_cont,
 		as_is
+	};
+
+	enum class Alert_func : uint8_t {
+		conv_rdy = 10,
+		pwr_over_lmt,
+		bus_under_voltage,
+		bus_over_voltage,
+		shunt_under_voltage,
+		shunt_over_voltage
 	};
 
 	INA226( const int i2cbus, const uint8_t address );
@@ -78,12 +95,23 @@ public:
 	 *	is also configured with this function.
 	 */
 	void Config( const Avg_samples avg_smpls, const VBUSCT_VSHCT bus_v_ct, const VBUSCT_VSHCT shunt_v_ct, Mode mode);
-	void Calibrate ( const float exp_max_current, const float shunt_resistor_value_ohm );
+
+
+	void Calibrate ( const float expected_max_current, const float shunt_resistor_value_ohm );
 
 	float Get_voltage();
 	float Get_shunt_voltage();
 	float Get_current();
 	float Get_power();
+
+	/* Selects the function that is enabled to control the Alert pin as well as how that pin functions.
+	 * The 'value' used to compare to the function selected in the 'func'
+	 * to determine if a limit has been exceeded.
+	 * 'value' ignored when 'conv_rdy function is selected.
+	 * If bus_under_voltage, bus_over_voltage or pwr_over_lmt selected, 'value' must be set in Volt or Watt.
+	 * If shunt_under_voltage or shunt_over_voltage selected, 'value' must be set in millivolt.
+	 */
+	void Set_alert_func( Alert_func func, float value, bool latch_enable = false, bool invert_polarity = false );
 
 	void Set_avg_samples ( const Avg_samples smpl);
 	void Reset();
@@ -93,6 +121,7 @@ private:
 
 	uint16_t Read16_t( uint8_t reg, uint8_t length);
 	float m_current_lsb; // Current value/bit "divider".
+	I2C_driver m_I2C_driver;
 };
 
 #endif /* INA226_H_ */

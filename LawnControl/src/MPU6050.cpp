@@ -1,7 +1,5 @@
 /*
- *	MPU6050.h
- *
- *	MPU6050 Driver implementation.
+ *	MPU6050.cpp
  *
  *	Copyright (C) 2019 Panagiotis Charisopoulos.
  *
@@ -23,7 +21,6 @@
 #include <chrono>
 #include <thread>
 #include <fstream>
-#include <iostream>
 
 constexpr uint16_t Dev_mem_size = 3*1024; // Maximum device memory size 3 KB.
 constexpr unsigned short Mem_start_address = 0x0400; // Set DMP program counter to this address.
@@ -177,14 +174,13 @@ namespace MPU6050 {
 
 
 Device::Device( const int i2cbus, const uint8_t address )
-		: I2C_driver( i2cbus, address ), m_dmp_on{ true }
+		: m_dmp_on{ true }, m_pwr_state { false }, m_I2C_driver( i2cbus, address )
 {
 	Reset();
 	Set_gyro_fsr();
 	Set_accel_fsr();
 	Set_dlpf(Dlpf::bw_42hz);
 	Set_gyro_rate();
-	Standby();
 }
 
 Device::~Device()
@@ -192,35 +188,33 @@ Device::~Device()
 	Reset();
 }
 
-bool Device::Mpu_pwr_on()
-{
-	return !Read_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_standby_bit );
-}
-
 uint8_t Device::Device_id()
 {
-	return Read( reg_who_am_i, 1).at(0) ;
+	return m_I2C_driver.Read( reg_who_am_i, 1).at(0) ;
 }
 
 
 void MPU6050::Device::Disable_temp_sensor(bool disable)
 {
-	disable ? Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_temp_dis_bit, true ) :
-			Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_temp_dis_bit, true );
+	if ( !m_pwr_state )
+		Wake_up();
+
+	disable ? m_I2C_driver.Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_temp_dis_bit, true ) :
+			m_I2C_driver.Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_temp_dis_bit, true );
 }
 
 // Returns ambient temperature. Please enable temperature sensor first.
 // If temperature sensor is disabled returns an odd value.
 float Device::Ambient_temp()
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
-	if ( Read_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_temp_dis_bit ) )
+	if ( m_I2C_driver.Read_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_temp_dis_bit ) )
 		Disable_temp_sensor( false );
 
-	short int raw = ( Read( reg_temp_out_h, 1 ).at(0) << 8) |
-						Read( reg_temp_out_l, 1 ).at(0);
+	short int raw = ( m_I2C_driver.Read( reg_temp_out_h, 1 ).at(0) << 8) |
+						m_I2C_driver.Read( reg_temp_out_l, 1 ).at(0);
 
 
 	/*
@@ -254,7 +248,7 @@ float Device::Ambient_temp()
  */
 void MPU6050::Device::Load_firmware(const std::string file_path)
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
 	std::ifstream firmware_file ( file_path, std::ifstream::in | std::ifstream::binary );
@@ -304,82 +298,88 @@ void MPU6050::Device::Load_firmware(const std::string file_path)
 				throw std::runtime_error{ "mpu6050: Data validation error while uploading firmware." };
 		}
 
-		I2C_buffer buff;
+		I2C_driver::I2C_buffer buff;
 		buff.reg = reg_dmp_cfg_1;
 		buff.data.push_back(Mem_start_address >> 8);
 		buff.data.push_back(Mem_start_address & 0xFF );
 
-		I2C_driver::Write( buff );
+		m_I2C_driver.Write( buff );
 	}
 }
 
 // This function puts device into standby mode.
 void Device::Standby()
 {
-	Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_standby_bit, true );
+	m_I2C_driver.Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_standby_bit, true );
+
+	m_pwr_state = false;
 }
 
 // This function put device into normal mode.
 void Device::Wake_up()
 {
-	Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_standby_bit, false );
-	Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_clk_select_bit, true);
+	m_I2C_driver.Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_standby_bit, false );
+	m_I2C_driver.Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_clk_select_bit, true);
 
 	using namespace std::chrono_literals;
 	std::this_thread::sleep_for(100ms);
+
+	m_pwr_state = true;
 }
 
 // This function reset device and put it into standby mode.
 void Device::Reset()
 {
-	Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_reset_bit, true);
+	m_I2C_driver.Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_reset_bit, true);
 
 	using namespace std::chrono_literals;
 	std::this_thread::sleep_for(100ms);
+
+	m_pwr_state = false;
 }
 
 Gyro_accel_data Device::Get_gyro_raw_data()
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
 	Gyro_accel_data recv_data;
-	recv_data.X = ( Read( reg_gyro_xout_h, 1).at(0) << 8 ) |
-					Read( reg_gyro_xout_l, 1).at(0);
-	recv_data.Y = ( Read( reg_gyro_yout_h, 1).at(0) << 8 ) |
-					Read( reg_gyro_yout_l, 1).at(0);
-	recv_data.Z = ( Read( reg_gyro_zout_h, 1).at(0) << 8 ) |
-					Read( reg_gyro_zout_l, 1).at(0);
+	recv_data.X = ( m_I2C_driver.Read( reg_gyro_xout_h, 1).at(0) << 8 ) |
+					m_I2C_driver.Read( reg_gyro_xout_l, 1).at(0);
+	recv_data.Y = ( m_I2C_driver.Read( reg_gyro_yout_h, 1).at(0) << 8 ) |
+					m_I2C_driver.Read( reg_gyro_yout_l, 1).at(0);
+	recv_data.Z = ( m_I2C_driver.Read( reg_gyro_zout_h, 1).at(0) << 8 ) |
+					m_I2C_driver.Read( reg_gyro_zout_l, 1).at(0);
 
 	return recv_data;
 }
 Gyro_accel_data Device::Get_accel_raw_data()
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
 	Gyro_accel_data recv_data;
-	recv_data.X = ( Read( reg_accel_xout_h, 1).at(0) << 8 ) |
-					Read( reg_accel_xout_l, 1).at(0);
-	recv_data.Y = ( Read( reg_accel_yout_h, 1).at(0) << 8 ) |
-					Read( reg_accel_yout_l, 1).at(0);
-	recv_data.Z = ( Read( reg_accel_zout_h, 1).at(0) << 8 ) |
-					Read( reg_accel_zout_l, 1).at(0);
+	recv_data.X = ( m_I2C_driver.Read( reg_accel_xout_h, 1).at(0) << 8 ) |
+					m_I2C_driver.Read( reg_accel_xout_l, 1).at(0);
+	recv_data.Y = ( m_I2C_driver.Read( reg_accel_yout_h, 1).at(0) << 8 ) |
+					m_I2C_driver.Read( reg_accel_yout_l, 1).at(0);
+	recv_data.Z = ( m_I2C_driver.Read( reg_accel_zout_h, 1).at(0) << 8 ) |
+					m_I2C_driver.Read( reg_accel_zout_l, 1).at(0);
 
 	return recv_data;
 }
 
 void Device::Set_dlpf(Dlpf bw)
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
-	I2C_buffer buff;
+	I2C_driver::I2C_buffer buff;
 
 	buff.reg = reg_config;
 	buff.data.push_back( static_cast<uint8_t>( bw ) );
 
-	Write( buff );
+	m_I2C_driver.Write( buff );
 }
 
 void Device::setTempFIFOEnabled(bool enable)
@@ -404,7 +404,7 @@ void Device::setAccelFIFOEnabled(bool enable)
 
 void Device::Set_gyro_rate(uint16_t rate)
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
 	if ( m_dmp_on )
@@ -416,86 +416,86 @@ void Device::Set_gyro_rate(uint16_t rate)
 	if (rate > 1000)
 		rate = 1000;
 
-	I2C_buffer buff;
+	I2C_driver::I2C_buffer buff;
 
 	buff.reg = reg_smplrt_div;
 	buff.data.push_back( 1000 / rate - 1 );
 
-	Write( buff );
+	m_I2C_driver.Write( buff );
 
 }
 
 void Device::Set_gyro_fsr(Guro_fsr range)
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
-	I2C_buffer buff;
+	I2C_driver::I2C_buffer buff;
 
 	buff.reg = reg_gyro_config;
 	buff.data.push_back( static_cast<uint8_t>( range ) << 3 );
 
-	Write( buff );
+	m_I2C_driver.Write( buff );
 }
 
 void Device::Set_accel_fsr(Accel_fsr range)
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
-	I2C_buffer buff;
+	I2C_driver::I2C_buffer buff;
 
 	buff.reg = reg_accel_config;
 	buff.data.push_back( static_cast<uint8_t>( range ) << 3 );
 
-	Write( buff );
+	m_I2C_driver.Write( buff );
 }
 
 void Device::Enable_fifo(bool enable)
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
-	Write_bit( reg_user_ctrl, usr_ctrl_fifo_enable, enable);
+	m_I2C_driver.Write_bit( reg_user_ctrl, usr_ctrl_fifo_enable, enable);
 }
 
 void Device::Reset_fifo( )
 {
-	if ( !Mpu_pwr_on() )
+	if ( !m_pwr_state )
 		Wake_up();
 
-	Write_bit( reg_user_ctrl, usr_ctrl_fifo_reset, true );
+	m_I2C_driver.Write_bit( reg_user_ctrl, usr_ctrl_fifo_reset, true );
 }
 
 std::vector<uint8_t> MPU6050::Device::Read_mem(uint16_t mem_address, uint16_t length)
 {
 
-	I2C_buffer sel_bank;
+	I2C_driver::I2C_buffer sel_bank;
 
     sel_bank.reg = reg_bank_sel;
     sel_bank.data.push_back( mem_address >> 8 );
     sel_bank.data.push_back( mem_address & 0xff );
 
-    I2C_driver::Write(sel_bank);
+    m_I2C_driver.Write(sel_bank);
 
-    return I2C_driver::Read( reg_mem_r_w, length);
+    return m_I2C_driver.Read( reg_mem_r_w, length);
 }
 
 void MPU6050::Device::Write_mem(uint16_t mem_address, uint16_t length,
 		std::vector<uint8_t> data)
 {
-	I2C_buffer sel_bank;
+	I2C_driver::I2C_buffer sel_bank;
 
 	sel_bank.reg = reg_bank_sel;
 	sel_bank.data.push_back( mem_address >> 8 );
 	sel_bank.data.push_back( mem_address & 0xff );
 
-	I2C_driver::Write(sel_bank);
+	m_I2C_driver.Write(sel_bank);
 
-	I2C_buffer buff;
+	I2C_driver::I2C_buffer buff;
 	buff.reg = reg_mem_r_w;
 	buff.data = data;
-	I2C_driver::Write(buff);
+	m_I2C_driver.Write(buff);
 }
 
 } //End of namespace MPU6050.

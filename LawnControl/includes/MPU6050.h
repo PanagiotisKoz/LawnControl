@@ -3,7 +3,7 @@
  *
  *	MPU6050 Driver declaration.
  *
- *	IMPORTAND!! The device power state, managed by driver.
+ *	IMPORTAND!! Any call to member function, implicit set device to power on state.
  *				This implementation does not implement to control i2c slaves,
  *				so mpu is in i2c bypass mode by default.
  *
@@ -48,7 +48,7 @@ struct Gyro_accel_data {
 	short int Z;
 };
 
-class Device : private I2C_driver{
+class Device {
 public:
 	enum class Dlpf : uint8_t {
 		bw_256hz,
@@ -102,9 +102,10 @@ public:
 	void	Reset_fifo();
 
 	// Functions, for power management.
-	void	Standby(); // This function puts device into standby mode.
-	void	Wake_up(); // This function put device into normal mode.
-	void	Reset(); // This function reset device.
+	void Standby(); // This function puts device into standby mode.
+	void Wake_up(); // This function put device into normal mode.
+	void Reset(); // This function reset device.
+	bool Get_pwr_state() { return m_pwr_state; }
 
 	void	Disable_temp_sensor(bool Disable = true); // By default sensor is On. True set sensor Off, false set sensor On.
 
@@ -114,13 +115,14 @@ public:
 	~Device();
 
 private:
-	bool Mpu_pwr_on();
 
 	// Function related to Invensense Motion Driver.
 	void 		Write_mem(uint16_t mem_address, uint16_t length, std::vector<uint8_t> data);
 	std::vector<uint8_t> Read_mem(uint16_t mem_address, uint16_t length);
 
-	bool 		m_dmp_on; // If dmp is enabled then true;
+	bool m_dmp_on; // If dmp is enabled then true;
+	bool m_pwr_state; // True for device power up.
+	I2C_driver m_I2C_driver;
 };
 
 } // End of namespace MPU6050.

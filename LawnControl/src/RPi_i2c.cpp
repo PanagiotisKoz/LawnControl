@@ -1,8 +1,6 @@
 /*
  *	RPi_i2c.cpp
  *
- *	I2C implementation for Raspberry Pi.
- *
  *	Copyright (C) 2019 Panagiotis Charisopoulos.
  *
  *	This program is free software: you can redistribute it and/or modify

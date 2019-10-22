@@ -1,7 +1,7 @@
 /*
  * 	spi.h
  *
- *	<one line to give the program's name and a brief idea of what it does.>
+ *	SPI interface for Raspberry Pi.
  *
  *	Copytight (C) 21 Οκτ 2019 Panagiotis charisopoulos
  *

@@ -1,7 +1,7 @@
 /*
  *	lawn_control.cpp
  *
- *	I2C implementation for Raspberry Pi.
+ *	This is program for testing drivers interface.
  *
  *	Copyright (C) 2019 Panagiotis Charisopoulos.
  *
@@ -19,69 +19,55 @@
  * 	along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <Cut_motor.h>
+#include <Sliderzaxis.h>
 #include "MPU6050.h"
 #include "MCP4131.h"
+#include "Motor.h"
 #include "INA226.h"
 #include <iostream>
 #include <unistd.h>
 #include <thread>
-#include <linux/spi/spidev.h>
+#include <future>
+//#include <sys/stat.h>
+//#include <linux/spi/spidev.h>
 
 using namespace std;
+
 constexpr int I2C_bus = 1;
 
-bool bStop = false;
-
-void measure( INA226 &s0, INA226 &s1)
-{
-	while( !bStop ) {
-		cout << "Sens0: " << s0.Get_voltage() << "V, " <<
-				-s0.Get_current() << "A\t";
-		usleep( 1000 );
-		cout << "Sens1: " << s1.Get_voltage() << "V, " <<
-				-s1.Get_current() << "A" << endl;
-	}
-}
+// Power measure Sensors constants.
+constexpr uint8_t Gen_pwr_measure_sens_addr = 0x41; // General power measure sensor address.
+constexpr uint8_t Cut_mtr_pwr_measure_sens_addr = 0x40; // Cutting motor power sensor address.
+constexpr float Gen_shunt_res = 0.012f; // General current sensor shunt resistor.
+constexpr float Cut_mtr_shunt_res = 0.02f; // Cutting motor current sensor shunt resistor.
+constexpr int Cut_mtr_shunt_volt_lmt = -10; // Cutting motor shunt voltage limit in millivolt.
+constexpr float Gen_bus_under_volt_lmt = 23.3; // General under voltage limit.
 
 int main() {
 
-	INA226 sens0(I2C_bus, 0x41);
-	INA226 sens1(I2C_bus, 0x40);
-
-	sens0.Config( INA226::Avg_samples::smpl_4, INA226::VBUSCT_VSHCT::ct_588us,
-					INA226::VBUSCT_VSHCT::ct_2p116ms, INA226::Mode::shunt_bus_cont);
-	sens1.Config( INA226::Avg_samples::smpl_4, INA226::VBUSCT_VSHCT::ct_588us,
-				INA226::VBUSCT_VSHCT::ct_2p116ms, INA226::Mode::shunt_bus_cont);
-	sens0.Calibrate( 6.4, 0.008 );
-	sens1.Calibrate( 6.4, 0.012 );
-
-	thread t1 { measure, ref(sens0), ref(sens1) };
-	MCP4131 dpot;
-
-	MPU6050::Device gy_521 ( I2C_bus );
 	try {
-		cout << "Device id is: 0x" << hex << +gy_521.Device_id() << endl;
-		cout << dec;
-		cout << "Ambient temperature is: " << fixed << gy_521.Ambient_temp() << "C" << endl;
-		gy_521.Disable_temp_sensor();
-		//gy_521.Load_firmware("/home/pi/projects/lawncontrol/debug/mpu6050_v6.1_firmware.bin");
-		MPU6050::Gyro_accel_data gdata = gy_521.Get_gyro_raw_data();
-		cout << "GX:" << gdata.X << " GY:" << gdata.Y << " GZ:" << gdata.Z << endl;
+		Motor mv_mtrs;
+		INA226 Gen_pwr_sens(I2C_bus, Gen_pwr_measure_sens_addr);
+		INA226 Cut_mtr_pwr_sens(I2C_bus, Cut_mtr_pwr_measure_sens_addr);
+		Cut_motor& cutmtr = Cut_motor::Instance();
+		Slider_zaxis stepper;
 
-		dpot.Enable();
-		dpot.Set_pot_middle();
-		sleep(5);
-	}
-	catch ( std::runtime_error &e ) {
-		cerr << e.what() << endl;
-		dpot.Set_pot_max();
-		dpot.Disable();
-		return -1;
-	}
-	bStop = true;
-	t1.join();
+		// Initialize sensors
+		Gen_pwr_sens.Config( INA226::Avg_samples::smpl_4, INA226::VBUSCT_VSHCT::ct_588us,
+					INA226::VBUSCT_VSHCT::ct_2p116ms, INA226::Mode::shunt_bus_cont);
+		Cut_mtr_pwr_sens.Config( INA226::Avg_samples::smpl_4, INA226::VBUSCT_VSHCT::ct_588us,
+				INA226::VBUSCT_VSHCT::ct_2p116ms, INA226::Mode::shunt_bus_cont);
+		Gen_pwr_sens.Calibrate( 6.4, Gen_shunt_res );
+		Cut_mtr_pwr_sens.Calibrate( 6.4, Cut_mtr_shunt_res );
 
-	dpot.Set_pot_max();
-	dpot.Disable();
+		Gen_pwr_sens.Set_alert_func( INA226::Alert_func::bus_under_voltage, Gen_bus_under_volt_lmt);
+		Cut_mtr_pwr_sens.Set_alert_func( INA226::Alert_func::shunt_under_voltage, Cut_mtr_shunt_volt_lmt);
+		// End sensors initialization.
+	}
+	catch ( std::runtime_error& err ) {
+
+	}
+
 	return 0;
 }

@@ -1,8 +1,6 @@
 /*
  * 	MCP4131.cpp
  *
- *	<one line to give the program's name and a brief idea of what it does.>
- *
  *	Copytight (C) 17 Οκτ 2019 Panagiotis charisopoulos
  *
  *	This program is free software: you can redistribute it and/or modify
@@ -21,12 +19,11 @@
 
 #include "MCP4131.h"
 
-MCP4131::~MCP4131()
-{
-	// TODO Auto-generated destructor stub
-}
-
 MCP4131::MCP4131( )
 {
 
+}
+
+MCP4131::~MCP4131( )
+{
 }
