@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
+#include <mutex>
 
 /*!
 	@class I2C_driver
@@ -41,20 +42,27 @@ public:
 	struct I2C_buffer {
 		uint8_t reg; // Register address to write
 		std::vector <uint8_t> data;
-		//i2c_buffer(const T& x) : data{x} { }
 	};
 
 	// Constructor.
 	I2C_driver( const int i2cbus, uint8_t addr );
+	I2C_driver( const I2C_driver& ) = delete; // non construction-copyable
+	I2C_driver& operator=( const I2C_driver& ) = delete; // non copyable
 
 	// Destructor.
 	virtual ~I2C_driver();
 
 	// Writes byte/s values of type i2c_byte_buffer to I2C bus.
-	void Write( I2C_buffer buffer) const;
+	void Write( I2C_buffer buffer);
 
 	// Reads 'count' of byte/s from register of I2C bus.
-	std::vector<uint8_t> Read( uint8_t i2c_register, const uint16_t length ) const;
+	std::vector<uint8_t> Read( uint8_t i2c_register, const uint16_t length );
+
+	// Reads bit value of register at position and return bit state. Returns true for 1 or false for 0.
+	bool Read_bit( uint8_t reg, uint8_t position);
+
+	// Writes bit value at position in register. State must be true for 1 and false for 0.
+	void Write_bit( uint8_t reg, uint8_t position, bool state);
 
 
 
@@ -68,8 +76,8 @@ private:
 	};
 
 	enum Smbus_access : uint8_t {
-			write = 0,
-			read
+		write = 0,
+		read
 	};
 
 	//! The device path.
@@ -86,6 +94,8 @@ private:
 
 	//! I2C adapter functionality.
 	unsigned long m_funcs;
+
+	std::mutex m_mutex;
 };
 
 #endif /* _RPI_HW_DRIVER_I2C_HPP_ */

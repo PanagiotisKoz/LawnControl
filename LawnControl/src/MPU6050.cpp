@@ -29,6 +29,149 @@ constexpr uint16_t Dev_mem_size = 3*1024; // Maximum device memory size 3 KB.
 constexpr unsigned short Mem_start_address = 0x0400; // Set DMP program counter to this address.
 constexpr unsigned short DMP_sample_rate = 200; // Sampling rate used when DMP is enabled.
 
+// The following group declares all MPU6050 internal registers.
+constexpr uint8_t reg_xg_offs_tc			= 0x00; // [7] PWR_MODE, [6:1] XG_OFFS_TC, [0] OTP_BNK_VLD
+constexpr uint8_t reg_yg_offs_tc      		= 0x01; // [7] PWR_MODE, [6:1] YG_OFFS_TC, [0] OTP_BNK_VLD
+constexpr uint8_t reg_zg_offs_tc      		= 0x02; // [7] PWR_MODE, [6:1] ZG_OFFS_TC, [0] OTP_BNK_VLD
+constexpr uint8_t reg_x_fine_gain     		= 0x03; // [7:0] X_FINE_GAIN
+constexpr uint8_t reg_y_fine_gain     		= 0x04; // [7:0] Y_FINE_GAIN
+constexpr uint8_t reg_z_fine_gain     		= 0x05; // [7:0] Z_FINE_GAIN
+constexpr uint8_t reg_xa_offs_h       		= 0x06; // Accel X-axis offset cancellation register high byte
+constexpr uint8_t reg_xa_offs_l_tc    		= 0x07; // Accel X-axis offset cancellation register low byte
+constexpr uint8_t reg_ya_offs_h      		= 0x08; // Accel Y-axis offset cancellation register high byte
+constexpr uint8_t reg_ya_offs_l_tc    		= 0x09; // Accel Y-axis offset cancellation register low byte
+constexpr uint8_t reg_za_offs_h       		= 0x0A; // Accel Z-axis offset cancellation register high byte
+constexpr uint8_t reg_za_offs_l_tc    		= 0x0B; // Accel Z-axis offset cancellation register low byte
+constexpr uint8_t reg_self_test_x     		= 0x0D; // [7:5] XA_TEST[4-2], [4:0] XG_TEST[4-0]
+constexpr uint8_t reg_self_test_y     		= 0x0E; // [7:5] YA_TEST[4-2], [4:0] YG_TEST[4-0]
+constexpr uint8_t reg_self_test_z     		= 0x0F; // [7:5] ZA_TEST[4-2], [4:0] ZG_TEST[4-0]
+constexpr uint8_t reg_self_test_a     		= 0x10; // [5:4] XA_TEST[1-0], [3:2] YA_TEST[1-0], [1:0] ZA_TEST[1-0]
+constexpr uint8_t reg_xg_offs_usrh    		= 0x13; // Gyro X-axis offset cancellation register high byte
+constexpr uint8_t reg_xg_offs_usrl    		= 0x14; // Gyro X-axis offset cancellation register low byte
+constexpr uint8_t reg_yg_offs_usrh    		= 0x15; // Gyro Y-axis offset cancellation register high byte
+constexpr uint8_t reg_yg_offs_usrl    		= 0x16; // Gyro Y-axis offset cancellation register low byte
+constexpr uint8_t reg_zg_offs_usrh    		= 0x17; // Gyro Z-axis offset cancellation register high byte
+constexpr uint8_t reg_zg_offs_usrl    		= 0x18; // Gyro Z-axis offset cancellation register low byte
+constexpr uint8_t reg_smplrt_div      		= 0x19; // Sample Rate Divider
+constexpr uint8_t reg_config          		= 0x1A; // Configuration
+constexpr uint8_t reg_gyro_config     		= 0x1B; // Gyroscope Configuration
+constexpr uint8_t reg_accel_config    		= 0x1C; // Accelerometer Configuration
+constexpr uint8_t reg_ff_thr          		= 0x1D;
+constexpr uint8_t reg_ff_dur          		= 0x1E;
+constexpr uint8_t reg_mot_thr         		= 0x1F;
+constexpr uint8_t reg_mot_dur         		= 0x20;
+constexpr uint8_t reg_zrmot_thr       		= 0x21;
+constexpr uint8_t reg_zrmot_dur       		= 0x22;
+constexpr uint8_t reg_fifo_en         		= 0x23; // FIFO Enable
+constexpr uint8_t reg_i2c_mst_ctrl    		= 0x24;
+constexpr uint8_t reg_i2c_slv0_addr   		= 0x25;
+constexpr uint8_t reg_i2c_slv0_reg    		= 0x26;
+constexpr uint8_t reg_i2c_slv0_ctrl   		= 0x27;
+constexpr uint8_t reg_i2c_slv1_addr   		= 0x28;
+constexpr uint8_t reg_i2c_slv1_reg    		= 0x29;
+constexpr uint8_t reg_i2c_slv1_ctrl   		= 0x2A;
+constexpr uint8_t reg_i2c_slv2_addr   		= 0x2B;
+constexpr uint8_t reg_i2c_slv2_reg    		= 0x2C;
+constexpr uint8_t reg_i2c_slv2_ctrl   		= 0x2D;
+constexpr uint8_t reg_i2c_slv3_addr   		= 0x2E;
+constexpr uint8_t reg_i2c_slv3_reg    		= 0x2F;
+constexpr uint8_t reg_i2c_slv3_ctrl   		= 0x30;
+constexpr uint8_t reg_i2c_slv4_addr   		= 0x31;
+constexpr uint8_t reg_i2c_slv4_reg    		= 0x32;
+constexpr uint8_t reg_i2c_slv4_do     		= 0x33;
+constexpr uint8_t reg_i2c_slv4_ctrl   		= 0x34;
+constexpr uint8_t reg_i2c_slv4_di     		= 0x35;
+constexpr uint8_t reg_i2c_mst_status  		= 0x36;
+constexpr uint8_t reg_int_pin_cfg     		= 0x37;
+constexpr uint8_t reg_int_enable      		= 0x38;
+constexpr uint8_t reg_dmp_int_status  		= 0x39;
+constexpr uint8_t reg_int_status      		= 0x3A;
+constexpr uint8_t reg_accel_xout_h    		= 0x3B;
+constexpr uint8_t reg_accel_xout_l    		= 0x3C;
+constexpr uint8_t reg_accel_yout_h    		= 0x3D;
+constexpr uint8_t reg_accel_yout_l    		= 0x3E;
+constexpr uint8_t reg_accel_zout_h    		= 0x3F;
+constexpr uint8_t reg_accel_zout_l    		= 0x40;
+constexpr uint8_t reg_temp_out_h      		= 0x41;
+constexpr uint8_t reg_temp_out_l      		= 0x42;
+constexpr uint8_t reg_gyro_xout_h     		= 0x43;
+constexpr uint8_t reg_gyro_xout_l     		= 0x44;
+constexpr uint8_t reg_gyro_yout_h     		= 0x45;
+constexpr uint8_t reg_gyro_yout_l     		= 0x46;
+constexpr uint8_t reg_gyro_zout_h     		= 0x47;
+constexpr uint8_t reg_gyro_zout_l      		= 0x48;
+constexpr uint8_t reg_ext_sens_data_00  	= 0x49;
+constexpr uint8_t reg_ext_sens_data_01  	= 0x4A;
+constexpr uint8_t reg_ext_sens_data_02  	= 0x4B;
+constexpr uint8_t reg_ext_sens_data_03  	= 0x4C;
+constexpr uint8_t reg_ext_sens_data_04  	= 0x4D;
+constexpr uint8_t reg_ext_sens_data_05  	= 0x4E;
+constexpr uint8_t reg_ext_sens_data_06  	= 0x4F;
+constexpr uint8_t reg_ext_sens_data_07  	= 0x50;
+constexpr uint8_t reg_ext_sens_data_08  	= 0x51;
+constexpr uint8_t reg_ext_sens_data_09  	= 0x52;
+constexpr uint8_t reg_ext_sens_data_10  	= 0x53;
+constexpr uint8_t reg_ext_sens_data_11  	= 0x54;
+constexpr uint8_t reg_ext_sens_data_12  	= 0x55;
+constexpr uint8_t reg_ext_sens_data_13  	= 0x56;
+constexpr uint8_t reg_ext_sens_data_14  	= 0x57;
+constexpr uint8_t ext_sens_data_15  		= 0x58;
+constexpr uint8_t reg_ext_sens_data_16  	= 0x59;
+constexpr uint8_t reg_ext_sens_data_17  	= 0x5A;
+constexpr uint8_t reg_ext_sens_data_18  	= 0x5B;
+constexpr uint8_t reg_ext_sens_data_19  	= 0x5C;
+constexpr uint8_t reg_ext_sens_data_20  	= 0x5D;
+constexpr uint8_t reg_ext_sens_data_21  	= 0x5E;
+constexpr uint8_t reg_ext_sens_data_22  	= 0x5F;
+constexpr uint8_t reg_ext_sens_data_23  	= 0x60;
+constexpr uint8_t reg_mot_detect_status 	= 0x61;
+constexpr uint8_t reg_i2c_slv0_do      		= 0x63;
+constexpr uint8_t reg_i2c_slv1_do      		= 0x64;
+constexpr uint8_t reg_i2c_slv2_do      		= 0x65;
+constexpr uint8_t reg_i2c_slv3_do      		= 0x66;
+constexpr uint8_t reg_i2c_mst_delay_ctrl	= 0x67;
+constexpr uint8_t reg_signal_path_reset  	= 0x68;
+constexpr uint8_t reg_mot_detect_ctrl    	= 0x69;
+constexpr uint8_t reg_user_ctrl        		= 0x6A;
+constexpr uint8_t reg_pwr_mgmt_1       		= 0x6B;
+constexpr uint8_t reg_pwr_mgmt_2       		= 0x6C;
+constexpr uint8_t reg_bank_sel         		= 0x6D;
+constexpr uint8_t reg_mem_start_addr   		= 0x6E;
+constexpr uint8_t reg_mem_r_w          		= 0x6F;
+constexpr uint8_t reg_dmp_cfg_1        		= 0x70;
+constexpr uint8_t reg_dmp_cfg_2        		= 0x71;
+constexpr uint8_t reg_fifo_counth      		= 0x72;
+constexpr uint8_t reg_fifo_countl      		= 0x73;
+constexpr uint8_t reg_fifo_r_w         		= 0x74;
+constexpr uint8_t reg_who_am_i         		= 0x75;
+
+
+/*
+ *	The following group declares, the values ​​that registers above must have
+ *in order to enable or disable device's capabilities.
+ *
+ *	For extra study please refer to InveSense document
+ *"MPU-6000 and MPU-6050 Register Map and Descriptions Revision 4.2"
+ */
+
+// Register 107 – Power Management 1.
+constexpr uint8_t Pwr_mgmt_1_clk_select_bit	= 0; // Always use PLL with X axis gyroscope reference.
+constexpr uint8_t Pwr_mgmt_1_temp_dis_bit	= 3;
+constexpr uint8_t Pwr_mgmt_1_cycle_bit		= 5;
+constexpr uint8_t Pwr_mgmt_1_standby_bit	= 6;
+constexpr uint8_t Pwr_mgmt_1_reset_bit		= 7;
+
+// Register 35 – FIFO enable.
+constexpr uint8_t fifo_enbl_accel_reg_bit 	= 3;
+constexpr uint8_t fifo_enbl_gz_reg_bit		= 4;
+constexpr uint8_t fifo_enbl_gy_reg_bit		= 5;
+constexpr uint8_t fifo_enbl_gx_reg_bit		= 6;
+constexpr uint8_t fifo_enbl_temp_reg_bit	= 7;
+
+// Register 106 – User control.
+constexpr uint8_t usr_ctrl_reset_sig_paths	= 0;
+constexpr uint8_t usr_ctrl_fifo_reset 		= 2;
+constexpr uint8_t usr_ctrl_fifo_enable		= 6;
 
 namespace MPU6050 {
 
@@ -51,19 +194,19 @@ Device::~Device()
 
 bool Device::Mpu_pwr_on()
 {
-	return !Read_bit( Register::pwr_mgmt_1, Pwr_mgmt_1::standby_bit );
+	return !Read_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_standby_bit );
 }
 
 uint8_t Device::Device_id()
 {
-	return Read( static_cast<uint8_t>( Register::who_am_i ), 1).at(0) ;
+	return Read( reg_who_am_i, 1).at(0) ;
 }
 
 
 void MPU6050::Device::Disable_temp_sensor(bool disable)
 {
-	disable ? Write_bit( Register::pwr_mgmt_1, Pwr_mgmt_1::temp_dis_bit, true ) :
-			Write_bit( Register::pwr_mgmt_1, Pwr_mgmt_1::temp_dis_bit, true );
+	disable ? Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_temp_dis_bit, true ) :
+			Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_temp_dis_bit, true );
 }
 
 // Returns ambient temperature. Please enable temperature sensor first.
@@ -73,11 +216,11 @@ float Device::Ambient_temp()
 	if ( !Mpu_pwr_on() )
 		Wake_up();
 
-	if ( Read_bit( Register::pwr_mgmt_1, Pwr_mgmt_1::temp_dis_bit ) )
+	if ( Read_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_temp_dis_bit ) )
 		Disable_temp_sensor( false );
 
-	short int raw = ( Read( static_cast<uint8_t>( Register::temp_out_h ), 1 ).at(0) << 8) |
-			Read( static_cast<uint8_t>( Register::temp_out_l ), 1 ).at(0);
+	short int raw = ( Read( reg_temp_out_h, 1 ).at(0) << 8) |
+						Read( reg_temp_out_l, 1 ).at(0);
 
 
 	/*
@@ -162,7 +305,7 @@ void MPU6050::Device::Load_firmware(const std::string file_path)
 		}
 
 		I2C_buffer buff;
-		buff.reg = static_cast<uint8_t>( Register::dmp_cfg_1 );
+		buff.reg = reg_dmp_cfg_1;
 		buff.data.push_back(Mem_start_address >> 8);
 		buff.data.push_back(Mem_start_address & 0xFF );
 
@@ -173,14 +316,14 @@ void MPU6050::Device::Load_firmware(const std::string file_path)
 // This function puts device into standby mode.
 void Device::Standby()
 {
-	Write_bit( Register::pwr_mgmt_1, Pwr_mgmt_1::standby_bit, true );
+	Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_standby_bit, true );
 }
 
 // This function put device into normal mode.
 void Device::Wake_up()
 {
-	Write_bit( Register::pwr_mgmt_1, Pwr_mgmt_1::standby_bit, false );
-	Write_bit( Register::pwr_mgmt_1, Pwr_mgmt_1::clk_select_bit, true);
+	Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_standby_bit, false );
+	Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_clk_select_bit, true);
 
 	using namespace std::chrono_literals;
 	std::this_thread::sleep_for(100ms);
@@ -189,7 +332,7 @@ void Device::Wake_up()
 // This function reset device and put it into standby mode.
 void Device::Reset()
 {
-	Write_bit( Register::pwr_mgmt_1, Pwr_mgmt_1::reset_bit, true);
+	Write_bit( reg_pwr_mgmt_1, Pwr_mgmt_1_reset_bit, true);
 
 	using namespace std::chrono_literals;
 	std::this_thread::sleep_for(100ms);
@@ -201,12 +344,12 @@ Gyro_accel_data Device::Get_gyro_raw_data()
 		Wake_up();
 
 	Gyro_accel_data recv_data;
-	recv_data.X = ( Read( static_cast<uint8_t>( Register::gyro_xout_h ), 1).at(0) << 8 ) |
-					Read( static_cast<uint8_t>( Register::gyro_xout_l ), 1).at(0);
-	recv_data.Y = ( Read( static_cast<uint8_t>( Register::gyro_yout_h ), 1).at(0) << 8 ) |
-					Read( static_cast<uint8_t>( Register::gyro_yout_l ), 1).at(0);
-	recv_data.Z = ( Read( static_cast<uint8_t>( Register::gyro_zout_h ), 1).at(0) << 8 ) |
-					Read( static_cast<uint8_t>( Register::gyro_zout_l ), 1).at(0);
+	recv_data.X = ( Read( reg_gyro_xout_h, 1).at(0) << 8 ) |
+					Read( reg_gyro_xout_l, 1).at(0);
+	recv_data.Y = ( Read( reg_gyro_yout_h, 1).at(0) << 8 ) |
+					Read( reg_gyro_yout_l, 1).at(0);
+	recv_data.Z = ( Read( reg_gyro_zout_h, 1).at(0) << 8 ) |
+					Read( reg_gyro_zout_l, 1).at(0);
 
 	return recv_data;
 }
@@ -216,12 +359,12 @@ Gyro_accel_data Device::Get_accel_raw_data()
 		Wake_up();
 
 	Gyro_accel_data recv_data;
-	recv_data.X = ( Read( static_cast<uint8_t>( Register::accel_xout_h ), 1).at(0) << 8 ) |
-					Read( static_cast<uint8_t>( Register::accel_xout_l ), 1).at(0);
-	recv_data.Y = ( Read( static_cast<uint8_t>( Register::accel_yout_h ), 1).at(0) << 8 ) |
-					Read( static_cast<uint8_t>( Register::accel_yout_l ), 1).at(0);
-	recv_data.Z = ( Read( static_cast<uint8_t>( Register::accel_zout_h ), 1).at(0) << 8 ) |
-					Read( static_cast<uint8_t>( Register::accel_zout_l ), 1).at(0);
+	recv_data.X = ( Read( reg_accel_xout_h, 1).at(0) << 8 ) |
+					Read( reg_accel_xout_l, 1).at(0);
+	recv_data.Y = ( Read( reg_accel_yout_h, 1).at(0) << 8 ) |
+					Read( reg_accel_yout_l, 1).at(0);
+	recv_data.Z = ( Read( reg_accel_zout_h, 1).at(0) << 8 ) |
+					Read( reg_accel_zout_l, 1).at(0);
 
 	return recv_data;
 }
@@ -233,7 +376,7 @@ void Device::Set_dlpf(Dlpf bw)
 
 	I2C_buffer buff;
 
-	buff.reg = static_cast<uint8_t>( Register::config );
+	buff.reg = reg_config;
 	buff.data.push_back( static_cast<uint8_t>( bw ) );
 
 	Write( buff );
@@ -275,7 +418,7 @@ void Device::Set_gyro_rate(uint16_t rate)
 
 	I2C_buffer buff;
 
-	buff.reg = static_cast<uint8_t>( Register::smplrt_div );
+	buff.reg = reg_smplrt_div;
 	buff.data.push_back( 1000 / rate - 1 );
 
 	Write( buff );
@@ -289,7 +432,7 @@ void Device::Set_gyro_fsr(Guro_fsr range)
 
 	I2C_buffer buff;
 
-	buff.reg = static_cast<uint8_t>( Register::gyro_config );
+	buff.reg = reg_gyro_config;
 	buff.data.push_back( static_cast<uint8_t>( range ) << 3 );
 
 	Write( buff );
@@ -302,7 +445,7 @@ void Device::Set_accel_fsr(Accel_fsr range)
 
 	I2C_buffer buff;
 
-	buff.reg = static_cast<uint8_t>( Register::accel_config );
+	buff.reg = reg_accel_config;
 	buff.data.push_back( static_cast<uint8_t>( range ) << 3 );
 
 	Write( buff );
@@ -313,7 +456,7 @@ void Device::Enable_fifo(bool enable)
 	if ( !Mpu_pwr_on() )
 		Wake_up();
 
-	Write_bit( Register::user_ctrl, User_control::fifo_enable, enable);
+	Write_bit( reg_user_ctrl, usr_ctrl_fifo_enable, enable);
 }
 
 void Device::Reset_fifo( )
@@ -321,28 +464,7 @@ void Device::Reset_fifo( )
 	if ( !Mpu_pwr_on() )
 		Wake_up();
 
-	Write_bit( Register::user_ctrl, User_control::fifo_reset, true );
-}
-
-template <class T> bool Device::Read_bit(Register reg, T bit_number)
-{
-	uint8_t recv_reg { Read( static_cast<uint8_t>( reg ), 1 ).at(0) };
-	return ( recv_reg & ( 1 << static_cast<uint8_t>( bit_number ) ) );
-}
-
-template <class T> void Device::Write_bit(Register reg, T bit_number,
-		bool state)
-{
-	uint8_t recv_reg { Read( static_cast<uint8_t>( reg ), 1 ).at(0) };
-	state ? recv_reg |= ( 1 << static_cast<uint8_t>( bit_number ) )
-						: recv_reg &= ~( 1 << static_cast<uint8_t>( bit_number ) );
-
-	I2C_buffer buff;
-
-	buff.reg = static_cast<uint8_t>( reg );
-	buff.data.push_back( recv_reg );
-
-	Write( buff );
+	Write_bit( reg_user_ctrl, usr_ctrl_fifo_reset, true );
 }
 
 std::vector<uint8_t> MPU6050::Device::Read_mem(uint16_t mem_address, uint16_t length)
@@ -350,13 +472,13 @@ std::vector<uint8_t> MPU6050::Device::Read_mem(uint16_t mem_address, uint16_t le
 
 	I2C_buffer sel_bank;
 
-    sel_bank.reg = static_cast<uint8_t>( Register::bank_sel );
+    sel_bank.reg = reg_bank_sel;
     sel_bank.data.push_back( mem_address >> 8 );
     sel_bank.data.push_back( mem_address & 0xff );
 
     I2C_driver::Write(sel_bank);
 
-    return I2C_driver::Read( static_cast<uint8_t>( Register::mem_r_w ), length);
+    return I2C_driver::Read( reg_mem_r_w, length);
 }
 
 void MPU6050::Device::Write_mem(uint16_t mem_address, uint16_t length,
@@ -364,14 +486,14 @@ void MPU6050::Device::Write_mem(uint16_t mem_address, uint16_t length,
 {
 	I2C_buffer sel_bank;
 
-	sel_bank.reg = static_cast<uint8_t>( Register::bank_sel );
+	sel_bank.reg = reg_bank_sel;
 	sel_bank.data.push_back( mem_address >> 8 );
 	sel_bank.data.push_back( mem_address & 0xff );
 
 	I2C_driver::Write(sel_bank);
 
 	I2C_buffer buff;
-	buff.reg = static_cast<uint8_t>( Register::mem_r_w );
+	buff.reg = reg_mem_r_w;
 	buff.data = data;
 	I2C_driver::Write(buff);
 }

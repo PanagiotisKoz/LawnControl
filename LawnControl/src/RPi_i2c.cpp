@@ -27,6 +27,7 @@
 #include <string>
 #include <stdexcept>
 #include <errno.h>
+#include <thread>
 #include <string.h>
 #include <sys/ioctl.h>
 
@@ -67,7 +68,9 @@ I2C_driver::~I2C_driver()
 }
 
 // Writes byte/s values of type i2c_byte_buffer to I2C bus.
-void I2C_driver::Write( I2C_buffer buffer) const {
+void I2C_driver::Write( I2C_buffer buffer)
+{
+	std::unique_lock<std::mutex> scoped_lock( m_mutex );
 
 	if ( buffer.data.size() == 0 )
 		return;
@@ -126,7 +129,9 @@ void I2C_driver::Write( I2C_buffer buffer) const {
 	}
 }
 
-std::vector<uint8_t> I2C_driver::Read( uint8_t i2c_register, const uint16_t length ) const {
+std::vector<uint8_t> I2C_driver::Read( uint8_t i2c_register, const uint16_t length )
+{
+	std::unique_lock<std::mutex> scoped_lock( m_mutex );
 
 	std::vector<uint8_t> ret_vec;
 
@@ -180,6 +185,55 @@ std::vector<uint8_t> I2C_driver::Read( uint8_t i2c_register, const uint16_t leng
 	}
 
 	return ret_vec;
+}
+
+bool I2C_driver::Read_bit(uint8_t reg, uint8_t bit_number)
+{
+	if ( bit_number > 15)
+		return false;
+
+	int num_bytes{ bit_number / 8 };
+
+	std::vector<uint8_t> recv_reg = Read( reg , num_bytes + 1 );
+
+	// High byte is in position 0 of vector.
+	int pos {0};
+	if ( num_bytes != 0 ) {
+		if ( bit_number > 7 )
+			bit_number %= 8;
+		else
+			pos = 1;
+	}
+
+	return ( recv_reg.at( pos ) & ( 1 << bit_number  ) );
+}
+
+void I2C_driver::Write_bit(uint8_t reg, uint8_t bit_number, bool state)
+{
+	if ( bit_number > 15 )
+		return;
+
+	int num_bytes{ bit_number / 8 };
+	std::vector<uint8_t> recv_reg = Read( reg , num_bytes + 1 );
+
+	// High byte is in position 0 of vector.
+	int pos {0};
+
+	if ( num_bytes != 0 ) {
+		if ( bit_number > 7 )
+			bit_number %= 8;
+		else
+			pos = 1;
+	}
+
+	state ? recv_reg.at( pos ) |= ( 1 << bit_number )	: recv_reg.at( pos ) &= ~( 1 << bit_number );
+
+	I2C_buffer buff;
+
+	buff.reg = static_cast<uint8_t>( reg );
+	buff.data = recv_reg;
+
+	Write( buff );
 }
 
 #endif /* _RPI_HW_DRIVER_I2C_CPP_ */
