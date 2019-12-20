@@ -1,19 +1,19 @@
 /*
- *	Prorocol.h
+ *  Prorocol.h
  *
- *	Communication protocol description..
- *	First byte is command.
- *	If command is "Property_SET" or "Property_GET" second byte is property
- *	to set or get. The following bytes to 32 used for value/s.
+ *  Communication protocol description..
+ *  First byte is command.
+ *  If command is "Property_SET" or "Property_GET" second byte is property
+ *  to set or get. The following bytes to 32 used for value/s.
  *
- *	If command is accepted from server, then it responses with "Ok" or "Ok" followed by a value
- *	if "Property_GET" committed by the client. Else it response with "Unknow_cmd" or
- *	"Unknow_property".
+ *  If command is accepted from server, then it responses with "Ok" or "Ok" followed by a value
+ *  if "Property_GET" committed by the client. Else it response with "Unknow_cmd" or
+ *  "Unknow_property".
  *
- *	Also if server can't execute a command because of hardware error it responses with
- *	"Fatal_error".
+ *  Also if server can't execute a command because of hardware error it responses with
+ *  "Fatal_error".
  *
- *	Copytight (C) 27 Οκτ 2019 Panagiotis charisopoulos
+ * 	Copytight (C) 27 Οκτ 2019 Panagiotis charisopoulos
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ namespace LM_protocol {
 
 	namespace General_cmd {
     	constexpr uint8_t Ok          	  = 0x0A;
-    	constexpr uint8_t Shutdown		  = 0x55;
+    	constexpr uint8_t Shutdown	 	  = 0x55;
     	constexpr uint8_t Unknow_cmd 	  = 0x0F;
     	constexpr uint8_t Property_SET	  = 0x70;
     	constexpr uint8_t Property_GET	  = 0x40;
