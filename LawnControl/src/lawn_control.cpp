@@ -1,7 +1,7 @@
 /*
  *	lawn_control.cpp
  *
- *	This is program for testing drivers interface.
+ *	This is program for con.
  *
  *	Copyright (C) 2019 Panagiotis Charisopoulos.
  *
@@ -19,55 +19,59 @@
  * 	along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <Cut_motor.h>
-#include <Sliderzaxis.h>
-#include "MPU6050.h"
-#include "MCP4131.h"
-#include "Motor.h"
-#include "INA226.h"
+#include "includes/server.h"
+#include "includes/lawn_logic_manager.h"
+#include "includes/mpu6050.h"
+#include <cmath>
+#include <boost/asio.hpp>
+#include <syslog.h>
+#include <type_traits>
+#include <stdexcept>
 #include <iostream>
-#include <unistd.h>
-#include <thread>
-#include <future>
-//#include <sys/stat.h>
-//#include <linux/spi/spidev.h>
 
-using namespace std;
+constexpr unsigned Listening_port = 8080;
 
-constexpr int I2C_bus = 1;
+void on_signal( MPU6050::Fifo_mpu_packet packet )
+{
+	/*double roll{ 0.0f }, pitch{ 0.0f };
+	roll = atan2( packet.accel_x, packet.accel_z ) * 57.3248f;
+	pitch = atan2( ( -packet.accel_x ), sqrt( packet.accel_y * packet.accel_y + packet.accel_z * packet.accel_z ) ) * 57.3248f;
+	std::cerr << "roll:" << roll <<	" Pitch:" << pitch << std::endl;*/
+	std::cerr << "Ax:" << packet.accel_x << " Ay:" <<
+			packet.accel_y << " Az:" << packet.accel_z << std::endl;
+}
 
-// Power measure Sensors constants.
-constexpr uint8_t Gen_pwr_measure_sens_addr = 0x41; // General power measure sensor address.
-constexpr uint8_t Cut_mtr_pwr_measure_sens_addr = 0x40; // Cutting motor power sensor address.
-constexpr float Gen_shunt_res = 0.012f; // General current sensor shunt resistor.
-constexpr float Cut_mtr_shunt_res = 0.02f; // Cutting motor current sensor shunt resistor.
-constexpr int Cut_mtr_shunt_volt_lmt = -10; // Cutting motor shunt voltage limit in millivolt.
-constexpr float Gen_bus_under_volt_lmt = 23.3; // General under voltage limit.
-
-int main() {
-
+int main()
+{
 	try {
-		Motor mv_mtrs;
-		INA226 Gen_pwr_sens(I2C_bus, Gen_pwr_measure_sens_addr);
-		INA226 Cut_mtr_pwr_sens(I2C_bus, Cut_mtr_pwr_measure_sens_addr);
-		Cut_motor& cutmtr = Cut_motor::Instance();
-		Slider_zaxis stepper;
+		/*MPU6050 mpu( 1, 0x68, 22 );
+		MPU6050::Gyro_accel_data data;
+		mpu.wake_up();
+		mpu.register_on_interrupt( on_signal );
+		mpu.enable_interrupt( true );
+		while (1) {
+			/*data = mpu.get_accel_raw_data();
+			std::cerr << "Ax:" << data.x <<
+		" Ay:" << data.y << " Az:" << data.z << std::endl;
+			std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
+		}*/
+		Lawn_logic_manager logic_manager;
+		boost::asio::io_service io_service;
 
-		// Initialize sensors
-		Gen_pwr_sens.Config( INA226::Avg_samples::smpl_4, INA226::VBUSCT_VSHCT::ct_588us,
-					INA226::VBUSCT_VSHCT::ct_2p116ms, INA226::Mode::shunt_bus_cont);
-		Cut_mtr_pwr_sens.Config( INA226::Avg_samples::smpl_4, INA226::VBUSCT_VSHCT::ct_588us,
-				INA226::VBUSCT_VSHCT::ct_2p116ms, INA226::Mode::shunt_bus_cont);
-		Gen_pwr_sens.Calibrate( 6.4, Gen_shunt_res );
-		Cut_mtr_pwr_sens.Calibrate( 6.4, Cut_mtr_shunt_res );
+		Server server( io_service, Listening_port );
 
-		Gen_pwr_sens.Set_alert_func( INA226::Alert_func::bus_under_voltage, Gen_bus_under_volt_lmt);
-		Cut_mtr_pwr_sens.Set_alert_func( INA226::Alert_func::shunt_under_voltage, Cut_mtr_shunt_volt_lmt);
-		// End sensors initialization.
+		// Register signal handlers so that the service may be shut down.
+		boost::asio::signal_set signals( io_service, SIGINT, SIGTERM, SIGHUP );
+		signals.async_wait( boost::bind(&boost::asio::io_service::stop, &io_service ) );
+
+		std::cerr << "<" << LOG_INFO << ">" << "Daemon running" << std::endl;
+		server.listen();
+		io_service.run();
+		std::cerr << "<" << LOG_INFO << ">" << "Daemon stopped" << std::endl;
+	} catch ( std::runtime_error& err ) {
+		std::cerr << "<" << LOG_ERR << ">" << err.what() << std::endl;
+		return EXIT_FAILURE;
 	}
-	catch ( std::runtime_error& err ) {
 
-	}
-
-	return 0;
+	return EXIT_SUCCESS;
 }

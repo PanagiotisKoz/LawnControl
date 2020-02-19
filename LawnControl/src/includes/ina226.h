@@ -1,5 +1,5 @@
 /*
- * 	INA226.h
+ * 	ina226.h
  *
  *	The INA226 is a digital current sense amplifier with an I2C- and
  *	SMBus-compatible interface. It provides digital current, voltage
@@ -34,33 +34,17 @@
 #ifndef INA226_H_
 #define INA226_H_
 
-#include <RPi_i2c.h>
+#include "rpi_i2c.h"
 
-class INA226 {
+class INA226 final {
 public:
 
 	enum class Avg_samples : uint8_t {
-		smpl_1,
-		smpl_4,
-		smpl_16,
-		smpl_64,
-		smpl_128,
-		smpl_256,
-		smpl_512,
-		smpl_1024,
-		as_is
+		smpl_1, smpl_4, smpl_16, smpl_64, smpl_128, smpl_256, smpl_512, smpl_1024, as_is
 	};
 
-	enum class VBUSCT_VSHCT : uint8_t{
-		ct_140us,
-		ct_204us,
-		ct_332us,
-		ct_588us,
-		ct_1p1ms,
-		ct_2p116ms,
-		ct_4p156ms,
-		ct_8p244ms,
-		as_is
+	enum class VBUSCT_VSHCT : uint8_t {
+		ct_140us, ct_204us, ct_332us, ct_588us, ct_1p1ms, ct_2p116ms, ct_4p156ms, ct_8p244ms, as_is
 	};
 
 	enum class Mode : uint8_t {
@@ -76,17 +60,11 @@ public:
 	};
 
 	enum class Alert_func : uint8_t {
-		conv_rdy = 10,
-		pwr_over_lmt,
-		bus_under_voltage,
-		bus_over_voltage,
-		shunt_under_voltage,
-		shunt_over_voltage
+		conv_rdy = 10, pwr_over_lmt, bus_under_voltage, bus_over_voltage, shunt_under_voltage, shunt_over_voltage
 	};
 
 	INA226( const int i2cbus, const uint8_t address );
-	INA226( const INA226& ) = delete; // non construction-copyable
-	INA226& operator=( const INA226& ) = delete; // non copyable
+	~INA226() {}
 
 	/*
 	 *	This function controls the conversion time settings for both
@@ -94,15 +72,14 @@ public:
 	 *	The operating mode that controls what signals are selected to be measured
 	 *	is also configured with this function.
 	 */
-	void Config( const Avg_samples avg_smpls, const VBUSCT_VSHCT bus_v_ct, const VBUSCT_VSHCT shunt_v_ct, Mode mode);
+	void config( const Avg_samples avg_smpls, const VBUSCT_VSHCT bus_v_ct, const VBUSCT_VSHCT shunt_v_ct, Mode mode );
 
+	void calibrate( const float expected_max_current, const float shunt_resistor_value_ohm );
 
-	void Calibrate ( const float expected_max_current, const float shunt_resistor_value_ohm );
-
-	float Get_voltage();
-	float Get_shunt_voltage();
-	float Get_current();
-	float Get_power();
+	float get_voltage();
+	float get_shunt_voltage();
+	float get_current();
+	float get_power();
 
 	/* Selects the function that is enabled to control the Alert pin as well as how that pin functions.
 	 * The 'value' used to compare to the function selected in the 'func'
@@ -111,15 +88,14 @@ public:
 	 * If bus_under_voltage, bus_over_voltage or pwr_over_lmt selected, 'value' must be set in Volt or Watt.
 	 * If shunt_under_voltage or shunt_over_voltage selected, 'value' must be set in millivolt.
 	 */
-	void Set_alert_func( Alert_func func, float value, bool latch_enable = false, bool invert_polarity = false );
+	void set_alert_func( Alert_func func, float value, bool latch_enable = false, bool invert_polarity = false );
 
-	void Set_avg_samples ( const Avg_samples smpl);
-	void Reset();
-	virtual ~INA226();
+	void set_avg_samples( const Avg_samples smpl );
+	void reset();
 
 private:
 
-	uint16_t Read16_t( uint8_t reg, uint8_t length);
+	uint16_t read16_t( uint8_t reg, uint8_t length );
 	float m_current_lsb; // Current value/bit "divider".
 	I2C_driver m_I2C_driver;
 };

@@ -1,5 +1,5 @@
 /*
- * 	Motor.h
+ * 	move_motor.h
  *
  *	This code manipulates dc motor that is rensponsible to move lawn mower,
  *	through LawnMower controller V1.1 board.
@@ -24,27 +24,23 @@
 #error You must use this code only for RPi
 #endif
 
-#ifndef MOTOR_H_
-#define MOTOR_H_
+#ifndef MOVE_MOTOR_H_
+#define MOVE_MOTOR_H_
 
 #include <stdint.h>
+#include "motor.h"
 
-class Motor {
+class Move_motor final : public Motor {
 public:
-	enum class Direction {
-		forward,
-		backward
-	};
+	Move_motor( int pwm_pin, int direction_pin );
 
-	Motor();
+	~Move_motor();
+private:
+	void apply_power();
 
-	void LMotor_move( Direction, uint16_t speed ); // Speed value must be 0..1024.
-	void LMotor_stop();
-
-	void RMotor_move( Direction, uint16_t speed ); // Speed value must be 0..1024
-	void RMotor_stop();
-
-	virtual ~Motor();
+	int m_pi; // Used for pigpiod_if2 library.
+	int m_direction_pin;
+	int m_pwm_pin;
 };
 
 #endif /* MOTOR_H_ */

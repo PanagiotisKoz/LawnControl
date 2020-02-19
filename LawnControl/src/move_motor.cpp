@@ -1,5 +1,5 @@
 /*
- * 	Motor.cpp
+ * 	move_motor.cpp
  *
  *	Copytight (C) 25 Οκτ 2019 Panagiotis charisopoulos
  *
@@ -17,72 +17,65 @@
  *	along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <Motor.h>
-#include <wiringPi.h>
+#include "includes/move_motor.h"
+#include <string>
+#include <stdexcept>
+#include <pigpiod_if2.h>
+#include <thread>
 
-constexpr int L_mtr_sel_dir_pin = 27; // Right motor direction select pim.
-constexpr int Pwm_l_mtr_pin = 13; // Left motor pwm source pin.
-constexpr int R_mtr_sel_dir_pin = 17; // Left motor direction select pin.
-constexpr int Pwm_r_mtr_pin = 12; // Right motor pwm source pin.
-constexpr int Stop_speed = 0; // Right motor pwm source pin.
+constexpr auto tag = "Move motor -- ";
+constexpr int Max_pwm_speed = 255;
+constexpr unsigned PWM_frequency = 25000;
 
-Motor::Motor()
+Move_motor::Move_motor( int pwm_pin, int direction_pin )
+	: m_direction_pin { direction_pin }, m_pwm_pin { pwm_pin }
 {
-	wiringPiSetupGpio();
+	m_pi = pigpio_start( NULL, NULL );
+	if ( m_pi < 0 ) {
+		std::string msg( tag );
+		msg += "Failed to connect to pigpiod. Please check if daemon is running.";
+		throw std::runtime_error( msg );
+	}
 
-	pinMode(Pwm_r_mtr_pin, PWM_OUTPUT);
-	pinMode(L_mtr_sel_dir_pin, OUTPUT);
+	set_mode( m_pi, m_pwm_pin, PI_OUTPUT );
+	set_mode( m_pi, m_direction_pin, PI_OUTPUT );
+	if ( set_PWM_frequency( m_pi, m_pwm_pin, PWM_frequency ) < 0 ) {
+		std::string msg( tag );
+		msg += "Failed to set frequency " + std::to_string( PWM_frequency )
+			+ " on gpio pin " + std::to_string( m_pwm_pin ) + ".";
+		throw std::runtime_error( msg );
+	}
 
-	pinMode(Pwm_l_mtr_pin, PWM_OUTPUT);
-	pinMode(R_mtr_sel_dir_pin, OUTPUT);
+	gpio_write( m_pi, m_direction_pin, 0 );
+	set_PWM_dutycycle( m_pi, m_pwm_pin, 0 );
 }
 
-void Motor::LMotor_move(Direction direction, uint16_t speed)
+Move_motor::~Move_motor()
 {
-	if ( speed > 1024 )
-		speed = 1024;
+	gpio_write( m_pi, m_direction_pin, 0 );
+	set_PWM_dutycycle( m_pi, m_pwm_pin, 0 );
 
-	switch ( direction ) {
+	pigpio_stop( m_pi );
+}
+
+void Move_motor::apply_power()
+{
+	// If is_pwr_on is false means stop.
+	if ( !Motor::is_pwr_on() ) {
+		set_PWM_dutycycle( m_pi, m_pwm_pin, 0 );
+		return;
+	}
+
+	switch ( Motor::get_direction() ) {
 		case Direction::forward:
-			digitalWrite( L_mtr_sel_dir_pin, 0 );
+			gpio_write( m_pi, m_direction_pin, 0 );
 			break;
 		case Direction::backward:
-			digitalWrite( L_mtr_sel_dir_pin, 1 );
+			gpio_write( m_pi, m_direction_pin, 1 );
 			break;
 	}
 
-	pwmWrite( Pwm_l_mtr_pin, speed);
+	int pwm_duty = Max_pwm_speed * Motor::get_power() / Max_power;
+
+	set_PWM_dutycycle( m_pi, m_pwm_pin, pwm_duty );
 }
-
-void Motor::LMotor_stop()
-{
-	digitalWrite( L_mtr_sel_dir_pin, 0 );
-	pwmWrite( Pwm_l_mtr_pin, Stop_speed);
-}
-
-void Motor::RMotor_move(Direction direction, uint16_t speed)
-{
-	if ( speed > 1024 )
-		speed = 1024;
-
-	switch ( direction ) {
-		case Direction::forward:
-			digitalWrite( R_mtr_sel_dir_pin, 0 );
-			break;
-		case Direction::backward:
-			digitalWrite( R_mtr_sel_dir_pin, 1 );
-			break;
-	}
-
-	pwmWrite( Pwm_r_mtr_pin, speed);
-}
-
-void Motor::RMotor_stop()
-{
-	pwmWrite( Pwm_r_mtr_pin, Stop_speed);
-}
-
-Motor::~Motor()
-{
-}
-

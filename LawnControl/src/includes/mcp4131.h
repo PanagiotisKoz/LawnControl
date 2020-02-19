@@ -1,8 +1,8 @@
 /*
- * 	MCP4131.h
+ * 	mcp4131.h
  *
  *	The MCP4131 device uses an SPI interface. This device support 7-bit
- *	resistor network, and Potentiometer and Rheostat pinouts.
+ *	resistor network, Potentiometer and Rheostat pinouts.
  *
  *	This code offer interface to manipulate this chip.
  *
@@ -29,47 +29,40 @@
 #ifndef MCP4131_H_
 #define MCP4131_H_
 
-#include <stdint.h>
-#include <unistd.h>
-#include "SPI.h"
+#include "spi.h"
 
-class MCP4131 {
+class MCP4131 final {
 public:
 
 	enum Pot_fixed_values : uint8_t {
-		pot_min = 0x00,
-		pot_max = 0x80,
-		pot_mid = 0x40
+		pot_min = 0x00, pot_max = 0x80, pot_mid = 0x40
 	};
 
-	MCP4131( );
-	MCP4131( const MCP4131& ) = delete; // non construction-copyable
-	MCP4131& operator=( const MCP4131& ) = delete; // non copyable
+	MCP4131() : m_enabled { false } {}
+	~MCP4131() {}
 
-	void Set_pot( uint8_t value ) { m_SPI.Write( static_cast<uint8_t>( Reg::wiper ), value ); }
-	void Set_pot_min( ) { m_SPI.Write( static_cast<uint8_t>( Reg::wiper ), Pot_fixed_values::pot_min ); }
-	void Set_pot_max( ) { m_SPI.Write( static_cast<uint8_t>( Reg::wiper ), Pot_fixed_values::pot_max ); }
-	void Set_pot_middle( ) { m_SPI.Write( static_cast<uint8_t>( Reg::wiper ), Pot_fixed_values::pot_mid ); }
+	void set_pot( uint8_t value );
+	void set_pot_min();
+	void set_pot_max();
+	void set_pot_middle();
 
+	bool is_enabled() const { return m_enabled; }
 
-	void Enable() { m_SPI.Write( static_cast<uint8_t>( Reg::tcon ), static_cast<uint8_t>( Pot::enable ) ); }
-	void Disable() { sleep(1); m_SPI.Write( static_cast<uint8_t>( Reg::tcon ), static_cast<uint8_t>( Pot::disable ) ); }
-
-	virtual ~MCP4131();
+	void enable();
+	void disable();
 
 private:
 
 	enum class Reg : uint8_t {
-		wiper	= 0x00,
-		tcon	= 0x40
+		wiper = 0x00, tcon = 0x40
 	};
 
 	enum class Pot : uint8_t {
-		disable = 0x08,
-		enable  = 0x0f
+		disable = 0x08, enable = 0x0f
 	};
 
 	SPI m_SPI;
+	bool m_enabled;
 };
 
 #endif /* MCP4131_H_ */

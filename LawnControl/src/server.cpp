@@ -1,90 +1,210 @@
-#include <boost/exception/all.hpp>
-#include <iostream>
+/*
+ * 	server.cpp
+ *
+ *	Copytight (C) 28 Δεκ 2019 Panagiotis charisopoulos
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+ *
+ *	You should have received a copy of the GNU General Public License
+ *	along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "includes/server.h"
+#include "includes/event_system.h"
+#include <boost/asio.hpp>
+#include <boost/exception/info.hpp>
+#include <functional>
 #include <syslog.h>
-#include <cstring>
-#include "Server.h"
+#include <iostream>
 
-Server::Server(boost::asio::io_service& io_service, uint32_t port)
-	: m_io_service(io_service), m_socket(io_service),
-	m_acceptor(io_service, tcp::endpoint(tcp::v4(), port))
-{}
+constexpr auto tag = "TCP Server -- ";
 
-void Server::start()
+Server::Server( boost::asio::io_service& io_service, uint32_t port )
+	try	: m_io_service( io_service ), m_socket( io_service ),
+	  	  m_acceptor( m_io_service, tcp::endpoint( tcp::v4(), port ) )
+{
+	Event_manager& event_mngr = Event_manager::get_instance();
+	event_mngr.add_receiver( Event_server_response::id,
+		std::bind( &Server::on_send, this, std::placeholders::_1 ) );
+} catch ( std::exception& e ) {
+	std::string msg( tag );
+	msg += e.what();
+	throw std::runtime_error( msg );
+}
+
+Server::~Server()
+{
+	stop();
+}
+
+void Server::listen()
 {
 	// Check whether the server was stopped by a signal before this
 	// completion handler had a chance to run.
-	if (!m_acceptor.is_open())
-	{
+	if ( !m_acceptor.is_open() ) {
 		return;
 	}
 
-	m_acceptor.async_accept( m_socket, boost::bind(&Server::handle_accept, this, m_socket,
-			boost::asio::placeholders::error ) );
+	m_acceptor.async_accept( m_socket, boost::bind( &Server::handle_accept, this, boost::asio::placeholders::error ) );
 }
 
-void Server::handle_accept( tcp::socket socket, const boost::system::error_code& error)
+void Server::handle_accept( const boost::system::error_code& error )
 {
-	if (!error)
-	{
-		try
-		{
+	if ( !error ) {
+		// Log connection accepted.
+		std::cerr << "<" << LOG_INFO << ">" << "Accept connection from "
+			<< m_socket.remote_endpoint().address().to_string() << " port " << m_socket.remote_endpoint().port()
+			<< std::endl;
 
-		}
-		catch (boost::exception& e)
-		{
-			std::cerr << "<" << LOG_ERR << ">" << "Session exception: "
-				<< boost::diagnostic_information(e) << std::endl;
-		}
+		// Start receiving.
+		m_socket.set_option( boost::asio::socket_base::enable_connection_aborted( true ) );
+		m_socket.set_option( boost::asio::socket_base::keep_alive( true ) );
+		m_socket.set_option( boost::asio::ip::tcp::no_delay( true ) );
+		m_socket.non_blocking( true );
+
+		async_read();
 	}
-	else
-	{
-
-	}
-
-	start();
-}
-
-void Server::handle_read(const boost::system::error_code& error, size_t bytes_transferred)
-{
-	if (!error)
-	{
-		try
-		{
-
-		}
-		catch (boost::exception& e)
-		{
-			std::cerr << "<" << LOG_ERR << ">" << "Session exception: "
-				<< boost::diagnostic_information(e) << std::endl;
-			delete this;
-		}
-	}
-	else
-	{
-		delete this;
+	else {
+		recover( error );
 	}
 }
 
-void Server::handle_write(const boost::system::error_code& error)
+void Server::async_read()
 {
-	if (!error)
-	{
-		try
-		{
-			m_socket.async_read_some(boost::asio::buffer(m_recv_buffer, 1),
-				boost::bind(&Server::handle_read, this,
-					boost::asio::placeholders::error,
-					boost::asio::placeholders::bytes_transferred));
+	m_socket.async_receive( boost::asio::null_buffers(),
+		boost::bind( &Server::handle_read, this, boost::asio::placeholders::error() ) );
+}
+
+void Server::handle_read( const boost::system::error_code& error )
+{
+	if ( !error ) {
+		int bytes_to_receive { 1 };
+		if ( m_socket.available() > 0 )
+			bytes_to_receive = m_socket.available();
+
+		boost::asio::streambuf buffer;
+		boost::asio::streambuf::mutable_buffers_type bufs = buffer.prepare( bytes_to_receive );
+		boost::system::error_code error;
+		m_socket.read_some( bufs, error );
+		if ( error ) {
+			recover( error );
+			return;
 		}
-		catch (boost::exception& e)
-		{
-			std::cerr << "<" << LOG_ERR << ">" << "Session exception: "
-				<< boost::diagnostic_information(e) << std::endl;
-			delete this;
-		}
+
+		buffer.commit( bytes_to_receive );
+
+		std::istream ss( &buffer );
+
+		handle_request( ss );
+
+		async_read();
 	}
-	else
-	{
-		delete this;
+	else {
+		if ( error.value() == boost::asio::error::try_again )
+			async_read();
+		else
+			recover( error );
 	}
+}
+
+void Server::recover( const boost::system::error_code& error )
+{
+	std::string msg( tag );
+
+	switch ( error.value() ) {
+		case boost::asio::error::eof:
+			msg += " Connection closed by client.";
+			std::cerr << "<" << LOG_INFO << ">" << msg << std::endl;
+			break;
+		default:
+			std::cerr << "<" << LOG_WARNING << ">" << error.message() << std::endl;
+	}
+
+	if ( m_socket.is_open() )
+		m_socket.close();
+
+	std::shared_ptr< Event_stop > event = std::make_shared< Event_stop >( );
+	Event_manager::get_instance().send_event( event );
+
+	listen();
+}
+
+void Server::stop()
+{
+	if ( m_socket.is_open() )
+		m_socket.close();
+
+	if ( m_acceptor.is_open() )
+		m_acceptor.close();
+}
+
+void Server::on_send( std::shared_ptr< IEvent > event )
+{
+	if ( m_socket.is_open() ) {
+		std::shared_ptr< Event_server_response > msg = std::static_pointer_cast< Event_server_response >( event );
+
+		std::stringstream ss;
+		msg->serialize( ss );
+		async_send( ss );
+	}
+}
+
+void Server::async_send( std::stringstream& os )
+{
+	if ( os.rdbuf()->in_avail() == 0 )
+		return;
+
+	os << '\r';
+	m_socket.async_write_some( boost::asio::buffer( os.str() ),
+		boost::bind( &Server::handle_write, this, boost::asio::placeholders::error, boost::ref( os ) ) );
+}
+
+void Server::handle_write( const boost::system::error_code& error, std::stringstream& os )
+{
+	if ( error ) {
+		if ( error.value() == boost::asio::error::try_again )
+			async_send( os );
+		else
+			recover( error );
+	}
+}
+
+void Server::handle_request( std::istream& data )
+{
+	unsigned request { 0 };
+	data >> request;
+
+	std::shared_ptr< IEvent > event;
+
+	switch ( request ) {
+		case Event_property_get::id:
+			event = std::make_shared< Event_property_get >( data );
+			break;
+		case Event_property_set::id:
+			event = std::make_shared< Event_property_set >( data );
+			break;
+		case Event_move::id:
+			event = std::make_shared< Event_move >( data );
+			break;
+		case Event_shutdown::id:
+			event = std::make_shared< Event_shutdown >( );
+			break;
+		default:
+			std::shared_ptr< Event_server_response > e = std::make_shared< Event_server_response >
+				( Event_server_response::Responses::command_unknow );
+
+			on_send( e );
+	}
+
+	if ( event != nullptr )
+		Event_manager::get_instance().send_event( event );
+
 }

@@ -1,5 +1,5 @@
 /*
- * 	CutMotor.h
+ * 	cut_motor.h
  *
  *	This class provides interface to control cutting motor.
  *
@@ -19,57 +19,30 @@
  *	along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef CUTMOTOR_H_
-#define CUTMOTOR_H_
+#ifndef CUT_MOTOR_H_
+#define CUT_MOTOR_H_
 
-#include "MCP4131.h"
-#include <thread>
-#include <mutex>
+#include "motor.h"
+#include "mcp4131.h"
 
-class Cut_motor {
+class Cut_motor final: public Motor {
 public:
-	Cut_motor(Cut_motor const&) = delete;
-    void operator= (Cut_motor const&) = delete;
-
-	static Cut_motor& Instance()
-	{
-		static Cut_motor instance;
-    	return instance;
-	}
-
-	void Brake( bool enable = false );
-
-	void Set_rpm( unsigned int rpm );
-	double Get_rpm();
-
-	void Start( unsigned int rpm );
-	void Stop();
-
-	static void Execute_ISR();
-
-private:
-	Cut_motor();
+	explicit Cut_motor( int brake_pin );
 	virtual ~Cut_motor();
 
-	void Rpm_count();
+	void brake( bool enable );
 
-	void Speed_PID();
+	bool is_brake_on() { return m_brake_on;	}
 
+private:
+	void apply_power();
+
+	int m_pi; // Used for pigpiod_if2 library.
+	int m_brake_pin;
+	bool m_brake_on;
+	uint8_t m_pot_value;
 	MCP4131 m_mcp4131;
 
-	std::thread m_speed_PID_thread;
-
-	unsigned int m_count_pulses;
-	std::chrono::milliseconds m_rotation_time_ms;
-	std::chrono::high_resolution_clock::time_point m_start_rotation_time;
-
-	double m_rpm;
-	unsigned int m_set_rpm;
-
-	bool m_is_running;
-	bool m_brake_on;
-
-	std::mutex m_mtx;
 };
 
 #endif /* CUTMOTOR_H_ */

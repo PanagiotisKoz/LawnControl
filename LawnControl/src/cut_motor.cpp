@@ -1,5 +1,5 @@
 /*
- * 	CutMotor.cpp
+ * 	cut_motor.cpp
  *
  *	Copytight (C) 25 Νοε 2019 Panagiotis charisopoulos
  *
@@ -17,142 +17,80 @@
  *	along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <Cut_motor.h>
-#include <wiringPi.h>
-#include <chrono>
-#include <functional>
+#include "includes/cut_motor.h"
+#include <string>
+#include <thread>
+#include <pigpiod_if2.h>
+#include <stdexcept>
 
-constexpr int Cut_sens_interrupt_pin = 25;
-constexpr int Cut_mtr_break_pin = 18;
-constexpr uint16_t Max_rpm = 3500; // Max allowable cutting speed in rpm.
-constexpr uint16_t PID_delta_millisecs = 40; // How many milliseconds pid must wait to catch set value.
-constexpr int Rotation_pulses = 2; // How many pulses to count for one rotation.
-constexpr unsigned int rpm_deviation = 100; // How many rpm is allowed to variate from set value.
+constexpr auto tag = "Cut motor -- ";
 
-Cut_motor::Cut_motor()
-	: m_count_pulses {0}, m_rpm {0}, m_set_rpm {0}, m_is_running {false}, m_brake_on {false}
+Cut_motor::Cut_motor( int brake_pin )
+	: m_brake_pin { brake_pin }, m_brake_on { false },
+	  m_pot_value{ 0 }
 {
-	wiringPiSetupGpio();
-
-	pinMode( Cut_mtr_break_pin, OUTPUT );
-	pinMode( Cut_sens_interrupt_pin, INPUT );
-
-	Brake( false );
-}
-
-void Cut_motor::Brake( bool enable )
-{
-	if ( enable ) {
-		if ( !m_is_running ) {
-			digitalWrite( Cut_mtr_break_pin, 1);
-			m_brake_on = true;
-		}
-	}
-	else {
-			digitalWrite( Cut_mtr_break_pin, 0);
-			m_brake_on = false;
-	}
-}
-
-void Cut_motor::Start(unsigned int rpm)
-{
-	m_is_running = true;
-
-	Set_rpm(rpm);
-
-	m_mcp4131.Enable();
-
-	if ( m_brake_on )
-		Brake( false );
-
-	wiringPiISR(Cut_sens_interrupt_pin, INT_EDGE_FALLING, Cut_motor::Instance().Execute_ISR );
-
-	m_speed_PID_thread = std::thread( &Cut_motor::Speed_PID, this );
-}
-
-void Cut_motor::Stop()
-{
-	m_is_running = false;
-
-	if ( m_speed_PID_thread.joinable() )
-		m_speed_PID_thread.join();
-
-	m_mcp4131.Set_pot_max();
-	m_mcp4131.Disable();
-}
-
-void Cut_motor::Rpm_count()
-{
-	if ( m_count_pulses == 0 )
-		m_start_rotation_time = std::chrono::high_resolution_clock::now();
-
-	++m_count_pulses;
-
-	if ( m_count_pulses == Rotation_pulses ) {
-		m_rotation_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>
-									( std::chrono::high_resolution_clock::now() - m_start_rotation_time );
-		if ( m_rotation_time_ms.count() != 0 ) {
-			m_mtx.lock();
-			// Ignore false reading.
-			if ( m_rotation_time_ms.count() > 10 )
-				m_rpm = 60000 / m_rotation_time_ms.count();
-			m_mtx.unlock();
-		}
+	m_pi = pigpio_start( NULL, NULL );
+	if ( m_pi < 0 ) {
+		std::string msg( tag );
+		msg += "Failed to connect to pigpiod. Please check if daemon is running.";
+		throw std::runtime_error( msg );
 	}
 
-	if ( m_count_pulses > Rotation_pulses )
-		m_count_pulses = 0;
-}
+	set_mode( m_pi, m_brake_pin, PI_OUTPUT );
 
-void Cut_motor::Set_rpm(unsigned int rpm)
-{
-	if ( m_is_running ) {
-		m_mtx.lock();
-		if ( rpm <= Max_rpm )
-			m_set_rpm = rpm;
-		else
-			m_set_rpm = Max_rpm;
-		m_mtx.unlock();
-	}
-}
+	brake( false );
 
-double Cut_motor::Get_rpm()
-{
-	double tmp;
-
-	m_mtx.lock();
-	tmp = m_rpm;
-	m_mtx.unlock();
-
-	return tmp;
-}
-
-void Cut_motor::Execute_ISR()
-{
-	Cut_motor::Instance().Rpm_count();
-}
-
-void Cut_motor::Speed_PID()
-{
-	unsigned short int pot_value = 255;
-
-	while ( m_is_running ) {
-		if ( m_set_rpm != m_rpm ) {
-			if ( m_set_rpm > ( m_rpm + rpm_deviation ) ) {
-				if ( pot_value > 1)
-					--pot_value;
-			}
-			if ( m_set_rpm < ( m_rpm - rpm_deviation ) ) {
-				if ( pot_value < 254 )
-					++pot_value;
-			}
-
-			m_mcp4131.Set_pot( pot_value );
-		}
-		std::this_thread::sleep_for( std::chrono::milliseconds( PID_delta_millisecs ) );
-	}
+	Motor::set_power( 0, Motor::Direction::forward );
 }
 
 Cut_motor::~Cut_motor()
 {
+	Motor::power_off();
+	pigpio_stop( m_pi );
+}
+
+void Cut_motor::brake( bool enable )
+{
+	// CAUTION DO NOT CHANGE CODE SEQUENCE.
+
+	if ( enable ) {
+		Motor::power_off();
+
+		if ( !Motor::is_pwr_on() ) {
+			gpio_write( m_pi, m_brake_pin, 1 );
+			m_brake_on = true;
+		}
+	}
+	else {
+		gpio_write( m_pi, m_brake_pin, 0 );
+		m_brake_on = false;
+	}
+}
+
+void Cut_motor::apply_power()
+{
+	// CAUTION DO NOT CHANGE CODE SEQUENCE.
+
+	// If is_pwr_on is false means stop.
+	if ( !Motor::is_pwr_on() ) {
+		// Caution: To stop motor mcp4131 digital pot must be set to max value.
+		if ( !m_mcp4131.is_enabled() )
+			m_mcp4131.enable();
+
+		m_mcp4131.set_pot_max();
+		m_mcp4131.disable();
+		return;
+	}
+
+	if ( m_brake_on )
+		return;
+
+	if ( !m_mcp4131.is_enabled() )
+		m_mcp4131.enable();
+
+	uint8_t pot_value = MCP4131::pot_max - ( MCP4131::pot_max * Motor::get_power() / Max_power );
+	if ( pot_value != m_pot_value ) {
+		m_mcp4131.set_pot( pot_value );
+		m_pot_value = pot_value;
+	}
 }

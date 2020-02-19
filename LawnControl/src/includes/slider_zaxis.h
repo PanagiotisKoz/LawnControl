@@ -1,5 +1,5 @@
 /*
- * 	Sliderzaxis.h
+ * 	slider_zaxis.h
  *
  *	This class manipulates slider that is rensponsible to move cutting disk,
  *	up down through LawnMower controller V1.1 board. The stepper system is T8-Z60.
@@ -24,41 +24,60 @@
 #error You must use this code only for RPi
 #endif
 
-#ifndef SLIDERZAXIS_H_
-#define SLIDERZAXIS_H_
+#ifndef SLIDER_ZAXIS_H_
+#define SLIDER_ZAXIS_H_
 
-#include "Stepmtr.h"
+#include "step_bipolar_mtr.h"
+#include <deque>
+#include <mutex>
+#include <thread>
+#include <tuple>
+#include <condition_variable>
 
-class Slider_zaxis {
+class Slider_zaxis final {
 public:
-	const unsigned short int Max_distance = 58; // Value is in mm.
+	constexpr static float max_distance = 58.0f; // Value is in mm.
 
 	enum class Direction {
-		up,
-		down
+		up, down
 	};
 
-	Slider_zaxis();
-	Slider_zaxis( const Slider_zaxis& ) = delete; // non construction-copyable
-	Slider_zaxis& operator=( const Slider_zaxis& ) = delete; // non copyable
+	Slider_zaxis( unsigned limit_swtch_pin );
+	~Slider_zaxis();
 
 	// Returns slider current position.
-	unsigned short int Get_cur_pos() { return m_current_pos; }
+	float get_cur_pos() const { return m_current_pos; }
 
+	void cancel();
+	void wait_moves_finish();
 	// Set slider to specific position. Takes argument value in mm. Max 70mm.
-	void Set_position( unsigned short int Pos_mm );
+	void set_position( float Pos_mm );
 
-	void Reset();
-
-	virtual ~Slider_zaxis();
-
-	unsigned short int m_current_pos; // Holds slider current position in mm.
+	void reset();
 
 private:
-	// Moves slider from current position.
-	void Move_distance( Direction, unsigned int distance_mm );
+	typedef std::tuple< Direction, float > params;
+	std::deque < params > m_pending_tasks;
+	std::thread m_process_tasks;
+	std::mutex m_pending_tasks_mutex;
+	std::condition_variable m_task_pending;
+    std::condition_variable m_task_completion;
+    bool m_cancel_tasks;
 
-	Step_mtr m_step_mottor;
+	float m_current_pos; // Holds slider current position in mm.
+	Step_bipolar_mtr m_step_mottor;
+
+	int m_pi; // Used for pigpiod_if2 library.
+	unsigned m_top_limit_swtch_pin;
+	int m_callback_id; // Id for cancel callback on destroy.
+
+
+	static void on_interrupt( int pi, unsigned pin,
+							  unsigned level, unsigned tick, void *userdata );
+
+	// Moves slider from current position.
+	void move_distance( Direction, float distance_mm );
+	void proccess_tasks();
 };
 
 #endif /* STEPPERMOTOR_H_ */
