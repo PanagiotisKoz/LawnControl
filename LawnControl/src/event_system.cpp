@@ -69,6 +69,35 @@ Event_property_get::Event_property_get( std::istream& is )
 		case Mower_event_ids::properties_ids::voltage_GET:
 			m_property_id = Properties::get_voltage;
 			break;
+		case Mower_event_ids::properties_ids::batt_percentage_GET:
+			m_property_id = Properties::get_batt_percentage;
+			break;
+	}
+}
+
+void Event_property_get::serialize( std::stringstream& ss )
+{
+	switch ( m_property_id ) {
+		case Properties::get_blade_height:
+			ss << Mower_event_ids::properties_ids::blade_height;
+			break;
+		case Properties::get_current:
+			ss << Mower_event_ids::properties_ids::current_GET;
+			break;
+		case Properties::get_power:
+			ss << Mower_event_ids::properties_ids::power_GET;
+			break;
+		case Properties::get_temp:
+			ss << Mower_event_ids::properties_ids::temp_GET;
+			break;
+		case Properties::get_voltage:
+			ss << Mower_event_ids::properties_ids::voltage_GET;
+			break;
+		case Properties::get_batt_percentage:
+			ss << Mower_event_ids::properties_ids::batt_percentage_GET;
+			break;
+		case Properties::unknow:
+			break;
 	}
 }
 
@@ -100,8 +129,11 @@ void Event_server_response::serialize( std::stringstream& ss )
 		case Responses::ok:
 			response = Mower_event_ids::server_response_id::ok;
 			break;
-		case Responses::fatal_error:
-			response = Mower_event_ids::server_response_id::fatal_error;
+		case Responses::low_batt_alert:
+			response = Mower_event_ids::server_response_id::low_batt_alert;
+			break;
+		case Responses::batt_charging_alert:
+			response = Mower_event_ids::server_response_id::batt_charging_alert;
 			break;
 		case Responses::command_unknow:
 			response = Mower_event_ids::server_response_id::command_unknow;

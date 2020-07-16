@@ -1,22 +1,3 @@
-/*
- * 	lawn_logic_manager.h
- *
- *	Copytight (C) 14 Ιαν 2020 Panagiotis charisopoulos
- *
- *	This program is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
- *
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public License
- *	along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 #ifndef INCLUDES_LAWN_LOGIC_MANAGER_H_
 #define INCLUDES_LAWN_LOGIC_MANAGER_H_
 
@@ -57,6 +38,14 @@ public:
 private:
 	void stop_cut();
 	void control_blade_speed( float rpm );
+	static void on_batt_low( int pi, unsigned pin,
+							  unsigned level, unsigned tick, void *userdata );
+	static void on_batt_charge( int pi, unsigned pin,
+							  unsigned level, unsigned tick, void *userdata );
+
+	int m_pi; // Used for pigpiod_if2 library.
+	int m_callback_id_batt_low; // Id for cancel callback on destroy.
+	int m_callback_id_batt_charging; // Id for cancel callback on destroy.
 
 	Cut_motor m_cut_mtr;
 	Move_motor m_left_mtr, m_right_mtr;
@@ -78,6 +67,8 @@ private:
 	PID_controller m_cut_mtr_pid;
 
 	bool m_emergency_on;
+	bool m_low_batt;
+	bool m_batt_charging;
 };
 
 #endif /* INCLUDES_LAWN_LOGIC_MANAGER_H_ */

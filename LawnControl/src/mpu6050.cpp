@@ -1,4 +1,5 @@
 #include "includes/mpu6050.h"
+#include "includes/global_messages.h"
 #include <chrono>
 #include <string>
 #include <iostream>
@@ -255,7 +256,7 @@ MPU6050::MPU6050( const int i2cbus, const uint8_t address, unsigned interrupt_pi
 	m_pi = pigpio_start( NULL, NULL );
 	if ( m_pi < 0 ) {
 		std::string msg( tag );
-		msg += "Failed to connect to pigpiod. Please check if daemon is running.";
+		msg += msg_gpio_no_connects;
 		throw std::runtime_error( msg );
 	}
 

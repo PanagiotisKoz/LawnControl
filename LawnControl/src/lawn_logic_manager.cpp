@@ -1,29 +1,12 @@
-/*
- * 	lawn_logic_manager.cpp
- *
- *	Copytight (C) 14 Ιαν 2020 Panagiotis charisopoulos
- *
- *	This program is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
- *
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public License
- *	along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 #include "includes/lawn_logic_manager.h"
 #include "includes/rpm_sensor.h"
 #include "includes/pid_controller.h"
 #include "includes/cut_motor.h"
 #include "includes/ina226.h"
 #include "includes/move_motor.h"
+#include "includes/global_messages.h"
 #include <exception>
+#include <pigpiod_if2.h>
 #include <stdexcept>
 #include <sstream>
 
@@ -35,6 +18,9 @@ constexpr float Cut_mtr_shunt_res = 0.02f; // Cutting motor current sensor shunt
 constexpr int Cut_mtr_shunt_volt_lmt = -9; // Cutting motor shunt voltage limit in millivolt.
 constexpr float Gen_bus_under_volt_lmt = 23.3; // General under voltage limit.
 constexpr unsigned Gen_bus_alert_pin = 26; // Alert pin for batteries under voltage.
+constexpr unsigned Batt_charging_alert_pin = 23; // Alert pin for batteries under voltage.
+constexpr float Max_batt_voltage = 25.4f;
+constexpr float Min_batt_voltage = 23.6f;
 
 // Motion sensor constants.
 constexpr uint8_t Motion_sens_addr = 0x68;
@@ -93,8 +79,19 @@ Lawn_logic_manager::Lawn_logic_manager()
 		m_left_mtr_rpm_sens( L_mtr_rpm_sens_interrupt_pin, Move_mtr_rpm_sens_pulses_per_rev, Move_mtr_Watchdog ),
 		m_right_mtr_rpm_sens( R_mtr_rpm_sens_interrupt_pin, Move_mtr_rpm_sens_pulses_per_rev, Move_mtr_Watchdog ),
 		m_cut_mtr_pid( Cut_mtr_pid_kp_ki, Cut_mtr_pid_kp_ki, Cut_mtr_pid_kd, 0 ),
-		m_emergency_on{ false }
+		m_emergency_on{ false }, m_low_batt{ false }, m_batt_charging{ false }
 {
+	m_pi = pigpio_start( NULL, NULL );
+	if ( m_pi < 0 ) {
+		std::string msg( tag );
+		msg += msg_gpio_no_connects;
+		throw std::runtime_error( msg );
+	}
+
+	set_mode( m_pi, Gen_bus_alert_pin, PI_INPUT );
+	m_callback_id_batt_low = callback_ex(m_pi, Gen_bus_alert_pin, EITHER_EDGE, on_batt_low, this );
+	m_callback_id_batt_charging = callback_ex(m_pi, Batt_charging_alert_pin, EITHER_EDGE, on_batt_charge, this );
+
 	// Initialize sensors
 	m_gen_pwr_sens.config( INA226::Avg_samples::smpl_4, INA226::VBUSCT_VSHCT::ct_588us,
 			INA226::VBUSCT_VSHCT::ct_2p116ms, INA226::Mode::shunt_bus_cont );
@@ -133,7 +130,11 @@ Lawn_logic_manager::Lawn_logic_manager()
 
 Lawn_logic_manager::~Lawn_logic_manager()
 {
+	callback_cancel( m_callback_id_batt_low );
+	callback_cancel( m_callback_id_batt_charging );
+
 	emergency_stop();
+	pigpio_stop( m_pi );
 }
 
 void Lawn_logic_manager::on_property_get( std::shared_ptr< IEvent > event )
@@ -142,7 +143,12 @@ void Lawn_logic_manager::on_property_get( std::shared_ptr< IEvent > event )
 			std::static_pointer_cast< Event_property_get >( event );
 
 	std::shared_ptr< IEvent > response;
+
 	std::stringstream data;
+	request->serialize( data );
+	data << " ";
+
+	unsigned percentage{ 0 };
 	switch ( request->get_property_id() ) {
 		case Event_property_get::Properties::get_blade_height:
 			data << m_slider_zaxis.get_cur_pos();
@@ -159,6 +165,12 @@ void Lawn_logic_manager::on_property_get( std::shared_ptr< IEvent > event )
 		case Event_property_get::Properties::get_voltage:
 			data << get_voltage();
 			break;
+		case Event_property_get::Properties::get_batt_percentage:
+			percentage = ( ( get_voltage() - Min_batt_voltage ) * 100 ) / ( Max_batt_voltage - Min_batt_voltage );
+			if ( percentage > 100 )
+				percentage = 100;
+			data << percentage;
+			break;
 		case Event_property_get::Properties::unknow:
 			response = std::make_shared< Event_server_response >
 						( Event_server_response::Responses::property_unknow );
@@ -174,10 +186,24 @@ void Lawn_logic_manager::on_property_get( std::shared_ptr< IEvent > event )
 
 void Lawn_logic_manager::on_property_set( std::shared_ptr< IEvent > event )
 {
+	std::shared_ptr< IEvent > response;
+
+	if ( m_low_batt ) {
+		response = std::make_shared< Event_server_response >
+					( Event_server_response::Responses::low_batt_alert );
+		Event_manager::get_instance().send_event( response );
+		return;
+	}
+
+	if ( m_batt_charging ) {
+		response = std::make_shared< Event_server_response >
+					( Event_server_response::Responses::batt_charging_alert );
+		Event_manager::get_instance().send_event( response );
+		return;
+	}
+
 	std::shared_ptr< Event_property_set > request =
 			std::static_pointer_cast< Event_property_set >( event );
-
-	std::shared_ptr< IEvent > response;
 
 	switch ( request->get_property_id() ) {
 		case Event_property_set::Properties::blade_height:
@@ -201,10 +227,24 @@ void Lawn_logic_manager::on_property_set( std::shared_ptr< IEvent > event )
 
 void Lawn_logic_manager::on_move( std::shared_ptr< IEvent > event )
 {
+	std::shared_ptr< IEvent > response;
+
+	if ( m_low_batt ) {
+		response = std::make_shared< Event_server_response >
+					( Event_server_response::Responses::low_batt_alert );
+		Event_manager::get_instance().send_event( response );
+		return;
+	}
+
+	if ( m_batt_charging ) {
+		response = std::make_shared< Event_server_response >
+					( Event_server_response::Responses::batt_charging_alert );
+		Event_manager::get_instance().send_event( response );
+		return;
+	}
+
 	std::shared_ptr< Event_move > request =
 			std::static_pointer_cast< Event_move >( event );
-
-	std::shared_ptr< IEvent > response;
 
 	unsigned short power = request->get_strength();
 	if ( power > 0 ) {
@@ -343,4 +383,30 @@ void Lawn_logic_manager::control_blade_speed( float rpm )
 {
 	uint8_t power = m_cut_mtr_pid.calculate( rpm );
 	m_cut_mtr.set_power( power, Cut_motor::Direction::forward );
+}
+
+void Lawn_logic_manager::on_batt_low( int pi, unsigned pin, unsigned level, unsigned tick, void *userdata )
+{
+	Lawn_logic_manager* p = reinterpret_cast< Lawn_logic_manager* >( userdata );
+
+	if ( level == 1 ) {
+		p->m_low_batt = true;
+		p->stop_cut();
+		p->stop_move();
+	}
+	else
+		p->m_low_batt = false;
+}
+
+void Lawn_logic_manager::on_batt_charge( int pi, unsigned pin, unsigned level, unsigned tick, void *userdata )
+{
+	Lawn_logic_manager* p = reinterpret_cast< Lawn_logic_manager* >( userdata );
+
+	if ( level == 0 ) {
+		p->m_batt_charging = true;
+		p->stop_cut();
+		p->stop_move();
+	}
+	else
+		p->m_batt_charging = false;
 }

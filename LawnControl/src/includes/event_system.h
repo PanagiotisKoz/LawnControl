@@ -72,19 +72,6 @@ private:
 	int m_strength;
 };
 
-class Event_shutdown: public IEvent {
-public:
-	static const unsigned id{ Mower_event_ids::general_event_ids::shutdown };
-
-	explicit Event_shutdown() { }
-
-	~Event_shutdown() { }
-
-	unsigned get_event_id() const { return id; }
-
-	void serialize( std::stringstream& ss ) { }
-};
-
 class Event_stop: public IEvent {
 public:
 	static const unsigned id{ Local_event_ids::stop };
@@ -105,9 +92,10 @@ public:
 	enum class Properties {
 		get_blade_height,
 		get_current,
-		get_power,
-		get_temp,
 		get_voltage,
+		get_power,
+		get_batt_percentage,
+		get_temp,
 		unknow
 	};
 
@@ -119,7 +107,7 @@ public:
 	unsigned get_event_id() const { return id; }
 	Properties get_property_id() const { return m_property_id; }
 
-	void serialize( std::stringstream& ss )	{ }
+	void serialize( std::stringstream& ss );
 
 private:
 	Properties m_property_id;
@@ -144,7 +132,7 @@ public:
 	Properties get_property_id() const { return m_property_id; }
 	unsigned get_value() const { return m_value; }
 
-	void serialize( std::stringstream& os )	{ }
+	void serialize( std::stringstream& ss )	{}
 
 private:
 	Properties m_property_id;
@@ -157,7 +145,8 @@ public:
 
 	enum class Responses {
 		ok,
-		fatal_error,
+		low_batt_alert,
+		batt_charging_alert,
 		command_unknow,
 		property_unknow,
 		property_return

@@ -1,22 +1,3 @@
-/*
- * 	server.cpp
- *
- *	Copytight (C) 28 Δεκ 2019 Panagiotis charisopoulos
- *
- *	This program is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
- *
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public License
- *	along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 #include "includes/server.h"
 #include "includes/event_system.h"
 #include <boost/asio.hpp>
@@ -69,6 +50,11 @@ void Server::handle_accept( const boost::system::error_code& error )
 		m_socket.set_option( boost::asio::socket_base::keep_alive( true ) );
 		m_socket.set_option( boost::asio::ip::tcp::no_delay( true ) );
 		m_socket.non_blocking( true );
+
+		// Send server ok.
+		std::stringstream ss;
+		ss << Mower_event_ids::server_response_id::ok;
+		async_send( ss );
 
 		async_read();
 	}
@@ -193,9 +179,6 @@ void Server::handle_request( std::istream& data )
 			break;
 		case Event_move::id:
 			event = std::make_shared< Event_move >( data );
-			break;
-		case Event_shutdown::id:
-			event = std::make_shared< Event_shutdown >( );
 			break;
 		default:
 			std::shared_ptr< Event_server_response > e = std::make_shared< Event_server_response >

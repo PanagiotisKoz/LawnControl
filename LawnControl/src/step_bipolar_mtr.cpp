@@ -1,4 +1,5 @@
 #include "includes/step_bipolar_mtr.h"
+#include "includes/global_messages.h"
 #include <algorithm>
 #include <string>
 #include <stdexcept>
@@ -27,7 +28,7 @@ Step_bipolar_mtr::Step_bipolar_mtr( const unsigned pin1, const unsigned pin2, co
 	m_pi = pigpio_start( NULL, NULL );
 	if ( m_pi < 0 ) {
 		std::string msg( tag );
-		msg += "Failed to connect to pigpiod. Please check if daemon is running.";
+		msg += msg_gpio_no_connects;
 		throw std::runtime_error( msg );
 	}
 

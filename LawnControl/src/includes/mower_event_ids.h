@@ -28,12 +28,12 @@ namespace Mower_event_ids {
 		constexpr unsigned property_GET = 30;
 		constexpr unsigned property_SET = 31;
 		constexpr unsigned move = 40;
-		constexpr unsigned shutdown = 10000;
 	}
 
 	namespace server_response_id {
 		constexpr unsigned ok = 8;
-		constexpr unsigned fatal_error = 10;
+		constexpr unsigned low_batt_alert = 9;
+		constexpr unsigned batt_charging_alert = 10;
 		constexpr unsigned command_unknow = 11;
 		constexpr unsigned property_unknow = 12;
 		constexpr unsigned property_return = 13;
@@ -57,6 +57,7 @@ namespace Mower_event_ids {
 		constexpr unsigned current_GET = 220;
 		constexpr unsigned voltage_GET = 221;
 		constexpr unsigned power_GET = 222;
+		constexpr unsigned batt_percentage_GET = 223;
 		constexpr unsigned temp_GET = 230;
 	}
 }
