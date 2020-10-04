@@ -5,6 +5,7 @@
 #include "includes/ina226.h"
 #include "includes/move_motor.h"
 #include "includes/global_messages.h"
+#include <iostream>
 #include <exception>
 #include <pigpiod_if2.h>
 #include <stdexcept>
@@ -18,9 +19,9 @@ constexpr float Cut_mtr_shunt_res = 0.02f; // Cutting motor current sensor shunt
 constexpr int Cut_mtr_shunt_volt_lmt = -9; // Cutting motor shunt voltage limit in millivolt.
 constexpr float Gen_bus_under_volt_lmt = 23.3; // General under voltage limit.
 constexpr unsigned Gen_bus_alert_pin = 26; // Alert pin for batteries under voltage.
-constexpr unsigned Batt_charging_alert_pin = 23; // Alert pin for batteries under voltage.
-constexpr float Max_batt_voltage = 25.4f;
-constexpr float Min_batt_voltage = 23.6f;
+constexpr unsigned Batt_charging_alert_pin = 23; // Charge indication pin.
+constexpr float Max_batt_voltage = 26.2f;
+constexpr float Min_batt_voltage = 22.2f;
 
 // Motion sensor constants.
 constexpr uint8_t Motion_sens_addr = 0x68;
@@ -100,6 +101,13 @@ Lawn_logic_manager::Lawn_logic_manager()
 	m_gen_pwr_sens.calibrate( 6.4, Gen_shunt_res );
 	m_cut_mtr_pwr_sens.calibrate( 6.4, Cut_mtr_shunt_res );
 
+	// Initialize alert pins ( charging pin and low batt pin).
+	if ( gpio_read( m_pi,  Batt_charging_alert_pin ) == 0 )
+		m_batt_charging = true;
+
+	if ( gpio_read( m_pi,  Gen_bus_alert_pin ) == 0 )
+		m_low_batt = true;
+
 	// This action will alert us through gpio pin 26 when voltage drop under 11.3V.
 	m_gen_pwr_sens.set_alert_func( INA226::Alert_func::bus_under_voltage, Gen_bus_under_volt_lmt );
 	// Sets current limit for cutting motor.
@@ -137,12 +145,47 @@ Lawn_logic_manager::~Lawn_logic_manager()
 	pigpio_stop( m_pi );
 }
 
+bool Lawn_logic_manager::has_alarm()
+{
+	if ( m_batt_charging ) {
+		std::shared_ptr< IEvent > response = std::make_shared< Event_server_response >
+				( Event_server_response::Responses::batt_charging_alert );
+		Event_manager::get_instance().send_event( response );
+		return true;
+	}
+
+	if ( m_low_batt ) {
+		std::shared_ptr< IEvent > response = std::make_shared< Event_server_response >
+				( Event_server_response::Responses::low_batt_alert );
+		Event_manager::get_instance().send_event( response );
+		return true;
+	}
+
+	return false;
+}
+
 void Lawn_logic_manager::on_property_get( std::shared_ptr< IEvent > event )
 {
 	std::shared_ptr< Event_property_get > request =
 			std::static_pointer_cast< Event_property_get >( event );
 
+	if ( has_alarm() )
+		return;
+
 	std::shared_ptr< IEvent > response;
+	if ( m_batt_charging ) {
+		response = std::make_shared< Event_server_response >
+					( Event_server_response::Responses::batt_charging_alert );
+		Event_manager::get_instance().send_event( response );
+		return;
+	}
+
+	if ( m_low_batt ) {
+		response = std::make_shared< Event_server_response >
+					( Event_server_response::Responses::low_batt_alert );
+		Event_manager::get_instance().send_event( response );
+		return;
+	}
 
 	std::stringstream data;
 	request->serialize( data );
@@ -186,21 +229,10 @@ void Lawn_logic_manager::on_property_get( std::shared_ptr< IEvent > event )
 
 void Lawn_logic_manager::on_property_set( std::shared_ptr< IEvent > event )
 {
+	if ( has_alarm() )
+		return;
+
 	std::shared_ptr< IEvent > response;
-
-	if ( m_low_batt ) {
-		response = std::make_shared< Event_server_response >
-					( Event_server_response::Responses::low_batt_alert );
-		Event_manager::get_instance().send_event( response );
-		return;
-	}
-
-	if ( m_batt_charging ) {
-		response = std::make_shared< Event_server_response >
-					( Event_server_response::Responses::batt_charging_alert );
-		Event_manager::get_instance().send_event( response );
-		return;
-	}
 
 	std::shared_ptr< Event_property_set > request =
 			std::static_pointer_cast< Event_property_set >( event );
@@ -227,21 +259,10 @@ void Lawn_logic_manager::on_property_set( std::shared_ptr< IEvent > event )
 
 void Lawn_logic_manager::on_move( std::shared_ptr< IEvent > event )
 {
+	if ( has_alarm() )
+		return;
+
 	std::shared_ptr< IEvent > response;
-
-	if ( m_low_batt ) {
-		response = std::make_shared< Event_server_response >
-					( Event_server_response::Responses::low_batt_alert );
-		Event_manager::get_instance().send_event( response );
-		return;
-	}
-
-	if ( m_batt_charging ) {
-		response = std::make_shared< Event_server_response >
-					( Event_server_response::Responses::batt_charging_alert );
-		Event_manager::get_instance().send_event( response );
-		return;
-	}
 
 	std::shared_ptr< Event_move > request =
 			std::static_pointer_cast< Event_move >( event );
@@ -389,7 +410,7 @@ void Lawn_logic_manager::on_batt_low( int pi, unsigned pin, unsigned level, unsi
 {
 	Lawn_logic_manager* p = reinterpret_cast< Lawn_logic_manager* >( userdata );
 
-	if ( level == 1 ) {
+	if ( level == 0 ) {
 		p->m_low_batt = true;
 		p->stop_cut();
 		p->stop_move();

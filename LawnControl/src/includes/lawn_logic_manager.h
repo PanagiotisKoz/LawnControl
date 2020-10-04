@@ -38,6 +38,7 @@ public:
 private:
 	void stop_cut();
 	void control_blade_speed( float rpm );
+	bool has_alarm(); //Return true if battery charging or have low charge.
 	static void on_batt_low( int pi, unsigned pin,
 							  unsigned level, unsigned tick, void *userdata );
 	static void on_batt_charge( int pi, unsigned pin,

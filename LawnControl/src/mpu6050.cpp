@@ -2,7 +2,7 @@
 #include "includes/global_messages.h"
 #include <chrono>
 #include <string>
-#include <iostream>
+//#include <iostream>
 #include <fstream>
 #include <pigpiod_if2.h>
 
@@ -260,11 +260,11 @@ MPU6050::MPU6050( const int i2cbus, const uint8_t address, unsigned interrupt_pi
 		throw std::runtime_error( msg );
 	}
 
-	set_mode( m_pi, m_interrupt_pin, PI_INPUT );
-
 	init_mpu();
 
-	m_callback_id = callback_ex( m_pi, m_interrupt_pin, EITHER_EDGE, on_interrupt, this );
+	set_mode( m_pi, m_interrupt_pin, PI_INPUT );
+	set_glitch_filter( m_pi, m_interrupt_pin, 50);
+	m_callback_id = callback_ex( m_pi, m_interrupt_pin, RISING_EDGE, on_interrupt, this );
 	m_read_fifo_thread = std::thread{ &MPU6050::fifo_thread, this };
 
 }catch ( std::exception& e ) {
@@ -966,8 +966,6 @@ void MPU6050::fifo_thread() {
 
 		int bytes_in_fifo = ( read_reg( reg_fifo_counth ) << 8 )|
 						      read_reg( reg_fifo_countl ) ;
-
-		std::cout << "Fifo bytes: " << bytes_in_fifo << std::endl;
 
 		m_more_data = bytes_in_fifo > m_mpu_packet_size;
 
