@@ -15,7 +15,7 @@
 constexpr uint8_t Gen_pwr_measure_sens_addr = 0x41; // General power measure sensor address.
 constexpr uint8_t Cut_mtr_pwr_measure_sens_addr = 0x40; // Cutting motor power sensor address.
 constexpr float Gen_shunt_res = 0.012f; // General current sensor shunt resistor.
-constexpr float Cut_mtr_shunt_res = 0.02f; // Cutting motor current sensor shunt resistor.
+constexpr float Cut_mtr_shunt_res = 0.0333f; // 3 x 0.1Ω in parallel connection.
 constexpr int Cut_mtr_shunt_volt_lmt = -9; // Cutting motor shunt voltage limit in millivolt.
 constexpr float Gen_bus_under_volt_lmt = 23.3; // General under voltage limit.
 constexpr unsigned Gen_bus_alert_pin = 26; // Alert pin for batteries under voltage.
